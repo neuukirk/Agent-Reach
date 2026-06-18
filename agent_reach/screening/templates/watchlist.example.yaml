@@ -1,0 +1,53 @@
+# Agent Reach — screening watchlist
+# Negative / adverse-media screening for an alliance program.
+# Copy this file, fill in your entities, edit the keyword list, then run:
+#   agent-reach screen run --watchlist watchlist.yaml
+
+program: "Alliance Program"
+
+# ── Entities to screen ──────────────────────────────────────────────
+# Each member of the program. Use `aliases` for ticker symbols, legal
+# names, common abbreviations, or product/brand names — any mention of a
+# listed term counts as a mention of that entity.
+entities:
+  - name: "Acme Corporation"
+    aliases: ["Acme Corp", "Acme Inc", "ACME"]
+  - name: "Globex"
+    aliases: ["Globex Industries"]
+  - name: "Initech"
+    # aliases optional
+
+# ── Risk keywords ───────────────────────────────────────────────────
+# A result is flagged only when it mentions an entity AND one of these.
+# Delete `keywords:` entirely to use the built-in default set
+# (lawsuit, fraud, investigation, sanction, scandal, breach, ... — see
+# agent_reach/screening/watchlist.py DEFAULT_KEYWORDS).
+keywords:
+  - lawsuit
+  - fraud
+  - investigation
+  - sanction
+  - fine
+  - scandal
+  - misconduct
+  - data breach
+  - bankruptcy
+  - "class action"
+  - bribery
+  - "money laundering"
+  - resign
+  - layoffs
+  - boycott
+
+# ── Sources ─────────────────────────────────────────────────────────
+# exa    = full-web / news (no account; safe on a schedule)
+# reddit = needs a logged-in backend (OpenCLI or rdt-cli, burner account)
+# twitter= needs twitter-cli cookie auth (burner account)
+sources:
+  exa: true
+  reddit: true
+  twitter: true
+
+options:
+  per_query_limit: 10   # results fetched per entity per source
+  lookback_days: 7      # informational; weekly cadence

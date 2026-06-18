@@ -124,6 +124,28 @@ def main():
 
     sub.add_parser("check-update", help="Check for new versions and changes")
 
+    # ── screen ──
+    p_screen = sub.add_parser("screen", help="Social-media negative-screening agent")
+    screen_sub = p_screen.add_subparsers(dest="screen_command", help="Screening actions")
+
+    p_screen_init = screen_sub.add_parser("init", help="Write a starter watchlist file")
+    p_screen_init.add_argument("--output", "-o", default="watchlist.yaml",
+                               help="Where to write the watchlist (default: watchlist.yaml)")
+
+    p_screen_run = screen_sub.add_parser("run", help="Run one screening pass")
+    p_screen_run.add_argument("--watchlist", "-w", default="watchlist.yaml",
+                              help="Watchlist YAML file (default: watchlist.yaml)")
+    p_screen_run.add_argument("--csv", default=None,
+                              help="Append findings to this CSV workbook")
+    p_screen_run.add_argument("--slack-webhook", default=None,
+                              help="Slack incoming webhook URL (else SLACK_WEBHOOK_URL env / config)")
+    p_screen_run.add_argument("--state", default=None,
+                              help="Dedup state file (default: ~/.agent-reach/screening/seen.json)")
+    p_screen_run.add_argument("--notify-when-empty", action="store_true",
+                              help="Post to Slack even when there are no new findings (heartbeat)")
+    p_screen_run.add_argument("--dry-run", action="store_true",
+                              help="Print the report only; no Slack post, no sink write, no state save")
+
     # ── watch ──
     sub.add_parser("watch", help="Quick health check + update check (for scheduled tasks)")
 
@@ -147,6 +169,8 @@ def main():
         _cmd_doctor(args)
     elif args.command == "check-update":
         _cmd_check_update()
+    elif args.command == "screen":
+        _cmd_screen(args)
     elif args.command == "watch":
         _cmd_watch()
     elif args.command == "setup":
@@ -1127,6 +1151,31 @@ def _cmd_transcribe(args):
         print(f"✅ Transcript written to {args.output}")
     else:
         print(text)
+
+
+def _cmd_screen(args):
+    """Social-media negative-screening agent (init / run)."""
+    from agent_reach.screening import runner
+
+    action = getattr(args, "screen_command", None)
+    if action == "init":
+        sys.exit(runner.cmd_init(args.output))
+    elif action == "run":
+        sys.exit(
+            runner.cmd_run(
+                watchlist_path=args.watchlist,
+                csv_path=args.csv,
+                slack_webhook=args.slack_webhook,
+                state_path=args.state,
+                dry_run=args.dry_run,
+                notify_when_empty=args.notify_when_empty,
+            )
+        )
+    else:
+        print("Usage: agent-reach screen <init|run> [options]")
+        print("  agent-reach screen init --output watchlist.yaml")
+        print("  agent-reach screen run --watchlist watchlist.yaml --csv findings.csv")
+        sys.exit(0)
 
 
 def _parse_twitter_cookie_input(value: str):
