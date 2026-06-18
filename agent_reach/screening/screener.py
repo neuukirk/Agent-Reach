@@ -12,11 +12,12 @@ from typing import List, Optional
 
 from loguru import logger
 
-from agent_reach.screening.models import Finding
+from agent_reach.screening.models import CONFIDENCE_RANK, Finding
 from agent_reach.screening.sources import Source
 from agent_reach.screening.state import StateStore
 from agent_reach.screening.watchlist import (
     Watchlist,
+    disambiguate,
     entity_mentioned,
     match_keywords,
 )
@@ -26,15 +27,21 @@ def run_screening(
     watchlist: Watchlist,
     sources: List[Source],
     state: Optional[StateStore] = None,
+    min_confidence: str = "low",
 ) -> List[Finding]:
     """Run one screening pass.
 
     For each enabled source and each entity, search the source for the entity,
-    then keep results that (a) genuinely mention the entity and (b) contain at
-    least one risk keyword. New (unseen) findings are returned and recorded in
-    state; the caller is responsible for state.save().
+    then keep results that (a) genuinely mention the entity, (b) contain at
+    least one risk keyword, and (c) clear the min_confidence disambiguation
+    bar. New (unseen) findings are returned and recorded in state; the caller
+    is responsible for state.save().
+
+    min_confidence: "low" keeps everything (tag only — let a downstream AI node
+    verify); "medium"/"high" pre-filter in Python for a tighter, cheaper feed.
     """
     new_findings: List[Finding] = []
+    threshold = CONFIDENCE_RANK.get(min_confidence, 1)
 
     usable: List[Source] = []
     for src in sources:
@@ -61,6 +68,9 @@ def run_screening(
                 matched = match_keywords(text, watchlist.keywords)
                 if not matched:
                     continue
+                confidence, reason = disambiguate(text, r.url, entity)
+                if CONFIDENCE_RANK[confidence] < threshold:
+                    continue
                 finding = Finding(
                     entity=entity.name,
                     source=r.source,
@@ -70,6 +80,10 @@ def run_screening(
                     matched_keywords=matched,
                     author=r.author,
                     published=r.published,
+                    member_id=entity.member_id,
+                    domain=entity.domain,
+                    confidence=confidence,
+                    confidence_reason=reason,
                 )
                 if state is not None and state.seen(finding.id):
                     continue

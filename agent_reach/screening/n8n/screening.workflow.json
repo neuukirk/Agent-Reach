@@ -1,0 +1,121 @@
+{
+  "name": "Member adverse-media screening",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "weeks", "weekday": 1, "triggerAtHour": 13 }
+          ]
+        }
+      },
+      "id": "trigger",
+      "name": "Weekly schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "command": "agent-reach screen run --members /data/members.csv --json --min-confidence medium"
+      },
+      "id": "screen",
+      "name": "Run screening (deterministic pre-filter)",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the CLI's JSON stdout into one n8n item per candidate finding.\nconst out = $input.first().json.stdout || '[]';\nlet findings = [];\ntry { findings = JSON.parse(out); } catch (e) { findings = []; }\nreturn findings.map(f => ({ json: f }));"
+      },
+      "id": "parse",
+      "name": "Parse findings",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": { "batchSize": 1, "options": {} },
+      "id": "loop",
+      "name": "Per finding",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "notice": "AI VERIFY (redundancy check). Replace with your LLM/AI Agent node. Input: member firmographics + result. Output JSON: {verified, why}. See README.md for the prompt."
+      },
+      "id": "verify",
+      "name": "AI verify (placeholder)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.verified }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "filter",
+      "name": "Keep verified",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1440, 300]
+    },
+    {
+      "parameters": {
+        "notice": "AI TRIAGE. Replace with your LLM/AI Agent node. Output JSON: {severity, summary}. See README.md for the prompt."
+      },
+      "id": "triage",
+      "name": "AI triage (placeholder)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1680, 220]
+    },
+    {
+      "parameters": {
+        "notice": "Slack node: post severity in {critical, material} to the screening channel. Map member_id, entity, summary, url."
+      },
+      "id": "slack",
+      "name": "Slack (placeholder)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1920, 160]
+    },
+    {
+      "parameters": {
+        "notice": "Google Sheets node (append): log every verified finding to the workbook, keyed by member_id + id."
+      },
+      "id": "sheet",
+      "name": "Sheets append (placeholder)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1920, 320]
+    }
+  ],
+  "connections": {
+    "Weekly schedule": { "main": [[{ "node": "Run screening (deterministic pre-filter)", "type": "main", "index": 0 }]] },
+    "Run screening (deterministic pre-filter)": { "main": [[{ "node": "Parse findings", "type": "main", "index": 0 }]] },
+    "Parse findings": { "main": [[{ "node": "Per finding", "type": "main", "index": 0 }]] },
+    "Per finding": { "main": [[{ "node": "AI verify (placeholder)", "type": "main", "index": 0 }]] },
+    "AI verify (placeholder)": { "main": [[{ "node": "Keep verified", "type": "main", "index": 0 }]] },
+    "Keep verified": { "main": [[{ "node": "AI triage (placeholder)", "type": "main", "index": 0 }]] },
+    "AI triage (placeholder)": { "main": [[{ "node": "Slack (placeholder)", "type": "main", "index": 0 }, { "node": "Sheets append (placeholder)", "type": "main", "index": 0 }]] }
+  },
+  "settings": {},
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Importable skeleton. Swap the noOp placeholders for your AI Agent / Slack / Google Sheets nodes — see README.md."
+  }
+}

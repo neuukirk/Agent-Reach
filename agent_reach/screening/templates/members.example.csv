@@ -1,0 +1,4 @@
+member_id,name,aliases,website,industry,location,tier
+1001,Acme Corporation,Acme Corp;ACME,https://www.acme.com,Manufacturing,"Columbus, OH",Platinum
+1002,Globex,Globex Industries,globex.io,Logistics,"Austin, TX",Gold
+1003,Initech,,initech.example,Software,"San Jose, CA",Silver

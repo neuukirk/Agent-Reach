@@ -36,16 +36,54 @@ DEFAULT_KEYWORDS: List[str] = [
 ]
 
 
+def normalize_domain(value: str) -> str:
+    """Reduce a website/url to a bare registrable-ish domain.
+
+    'https://www.Acme-Corp.com/about' → 'acme-corp.com'. Best-effort: keeps
+    everything after the last leading 'www.' and before the first slash.
+    """
+    if not value:
+        return ""
+    v = value.strip().lower()
+    v = re.sub(r"^[a-z]+://", "", v)        # strip scheme
+    v = v.split("/", 1)[0]                   # strip path
+    v = re.sub(r"^www\.", "", v)             # strip leading www.
+    return v.strip()
+
+
 @dataclass
 class Entity:
-    """One alliance-program member to screen for."""
+    """One alliance-program member to screen for, with firmographics.
+
+    The firmographic fields power disambiguation at scale: `domain` is the
+    strongest signal (confirms a hit is the right member), `industry` and
+    `location` are corroborators, `tier` drives prioritization.
+    """
 
     name: str
     aliases: List[str] = field(default_factory=list)
+    member_id: str = ""
+    domain: str = ""
+    industry: str = ""
+    location: str = ""
+    tier: str = ""
+
+    def __post_init__(self) -> None:
+        self.domain = normalize_domain(self.domain)
 
     def terms(self) -> List[str]:
         """All surface forms to look for (name + aliases)."""
         return [self.name, *self.aliases]
+
+    def domain_root(self) -> str:
+        """Brand portion of the domain, e.g. 'acme-corp' from 'acme-corp.com'."""
+        if not self.domain:
+            return ""
+        return self.domain.rsplit(".", 1)[0] if "." in self.domain else self.domain
+
+    def corroborators(self) -> List[str]:
+        """Firmographic terms that, if present, corroborate a name match."""
+        return [t for t in (self.industry, self.location) if t]
 
 
 @dataclass
@@ -82,7 +120,15 @@ class Watchlist:
                 entities.append(Entity(name=item))
             elif isinstance(item, dict) and item.get("name"):
                 entities.append(
-                    Entity(name=item["name"], aliases=list(item.get("aliases") or []))
+                    Entity(
+                        name=item["name"],
+                        aliases=list(item.get("aliases") or []),
+                        member_id=str(item.get("member_id") or ""),
+                        domain=str(item.get("domain") or item.get("website") or ""),
+                        industry=str(item.get("industry") or ""),
+                        location=str(item.get("location") or ""),
+                        tier=str(item.get("tier") or ""),
+                    )
                 )
         if not entities:
             raise ValueError("Watchlist has no entities — add at least one under 'entities:'")
@@ -133,3 +179,25 @@ def match_keywords(text: str, keywords: List[str]) -> List[str]:
         if _contains_term(text, kw) and kw not in seen:
             seen.append(kw)
     return seen
+
+
+def disambiguate(text: str, url: str, entity: Entity) -> tuple[str, str]:
+    """Score how confident we are that a name match is the *right* member.
+
+    Returns (confidence, reason):
+      high   — the member's domain appears in the result url or text. This is
+               near-certain identity, the firmographic payoff at scale.
+      medium — a corroborating firmographic term (industry / location) is
+               present alongside the name.
+      low    — name + keyword only; let a downstream AI verification node make
+               the final call before trusting it.
+    """
+    haystack = f"{url} {text}".lower()
+    # High confidence requires the *full* domain (acme.com) in the url or text —
+    # the brand root alone would just echo the name match and over-inflate.
+    if entity.domain and entity.domain in haystack:
+        return "high", f"domain match ({entity.domain})"
+    for term in entity.corroborators():
+        if _contains_term(text, term):
+            return "medium", f"corroborated by '{term}'"
+    return "low", "name + keyword only"

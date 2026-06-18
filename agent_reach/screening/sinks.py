@@ -23,8 +23,8 @@ from loguru import logger
 from agent_reach.screening.models import Finding
 
 _COLUMNS = [
-    "id", "entity", "source", "title", "url",
-    "matched_keywords", "author", "published", "snippet",
+    "id", "member_id", "entity", "domain", "confidence", "confidence_reason",
+    "source", "title", "url", "matched_keywords", "author", "published", "snippet",
 ]
 
 

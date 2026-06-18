@@ -133,10 +133,16 @@ def main():
                                help="Where to write the watchlist (default: watchlist.yaml)")
 
     p_screen_run = screen_sub.add_parser("run", help="Run one screening pass")
-    p_screen_run.add_argument("--watchlist", "-w", default="watchlist.yaml",
-                              help="Watchlist YAML file (default: watchlist.yaml)")
+    p_screen_run.add_argument("--watchlist", "-w", default=None,
+                              help="Watchlist YAML file (default: watchlist.yaml if --members absent)")
+    p_screen_run.add_argument("--members", default=None,
+                              help="Member-base CSV (the 1,400-member case) — used instead of --watchlist")
     p_screen_run.add_argument("--csv", default=None,
                               help="Append findings to this CSV workbook")
+    p_screen_run.add_argument("--json", action="store_true", dest="json_output",
+                              help="Emit findings as JSON (for n8n / AI nodes) instead of a Slack report")
+    p_screen_run.add_argument("--min-confidence", choices=["low", "medium", "high"], default="low",
+                              help="Disambiguation floor: low=tag only, medium/high=pre-filter (default: low)")
     p_screen_run.add_argument("--slack-webhook", default=None,
                               help="Slack incoming webhook URL (else SLACK_WEBHOOK_URL env / config)")
     p_screen_run.add_argument("--state", default=None,
@@ -1164,17 +1170,21 @@ def _cmd_screen(args):
         sys.exit(
             runner.cmd_run(
                 watchlist_path=args.watchlist,
+                members_path=args.members,
                 csv_path=args.csv,
                 slack_webhook=args.slack_webhook,
                 state_path=args.state,
                 dry_run=args.dry_run,
                 notify_when_empty=args.notify_when_empty,
+                json_output=args.json_output,
+                min_confidence=args.min_confidence,
             )
         )
     else:
         print("Usage: agent-reach screen <init|run> [options]")
         print("  agent-reach screen init --output watchlist.yaml")
         print("  agent-reach screen run --watchlist watchlist.yaml --csv findings.csv")
+        print("  agent-reach screen run --members members.csv --json --min-confidence medium")
         sys.exit(0)
 
 

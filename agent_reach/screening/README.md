@@ -25,20 +25,49 @@ agent-reach screen run --watchlist watchlist.yaml --csv findings.csv
 ## Pipeline
 
 ```
-watchlist.yaml
-   │  entities (+ aliases), risk keywords, enabled sources
+watchlist.yaml  ──or──  members.csv (the 1,400-member base, with firmographics)
+   │  entities (+ aliases, domain, industry, location, tier), risk keywords
    ▼
 sources         exa (no account) · reddit (login) · twitter (login)
    │  each shells out to the upstream tool Agent Reach configures
    ▼
 match           entity mentioned  AND  ≥1 risk keyword     (watchlist.py)
-   │
+   ▼
+disambiguate    confidence = high (domain match) / medium (industry|location)
+   │            / low (name only) — the firmographic accuracy layer
    ▼
 dedup           seen.json — never re-report the same hit   (state.py)
    │
-   ├─► Slack     incoming-webhook digest, grouped by entity (notify.py)
-   └─► sink      CSV workbook now; Airtable/Sheets later    (sinks.py)
+   ├─► Slack     incoming-webhook digest, grouped by member (notify.py)
+   ├─► sink      CSV workbook now; Airtable/Sheets later    (sinks.py)
+   └─► --json    structured findings for an n8n AI pipeline (see n8n/)
 ```
+
+## Screening a member database (the 1,400-member case)
+
+Point the agent at a member-base CSV instead of a hand-written watchlist. Any
+export (Google Sheets / Airtable / SQL) works; columns are matched by common
+aliases — `name`/`company`, `website`/`domain`, `aliases`, `industry`,
+`location`, `tier`, `member_id`/`id`. See `templates/members.example.csv`.
+
+```bash
+agent-reach screen run --members members.csv --csv findings.csv --min-confidence medium
+agent-reach screen run --members members.csv --json --min-confidence medium   # for n8n
+```
+
+Every finding carries `member_id` and a `confidence` tag, so it ties straight
+back to the member record and downstream can triage right- vs wrong-entity
+hits. `domain` is the highest-value field — it's what lets the agent confirm a
+hit is about the *right* same-named company.
+
+## n8n / AI-node orchestration
+
+For the work environment (Slack + Google Sheets + an LLM provider), the
+deterministic CLI is one stage in an n8n flow: it pre-filters all 1,400 members
+cheaply and emits candidate JSON (`--json`), then n8n AI nodes **verify**
+(redundancy check / disambiguation), **triage** (severity + summary), and
+deliver. Full design, drop-in prompts, and an importable workflow skeleton are
+in [`n8n/README.md`](n8n/README.md).
 
 ## Sources & accounts
 

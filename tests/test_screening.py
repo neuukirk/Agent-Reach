@@ -4,6 +4,7 @@
 
 import pytest
 
+from agent_reach.screening.members import load_member_watchlist
 from agent_reach.screening.models import Finding, RawResult
 from agent_reach.screening.notify import format_report
 from agent_reach.screening.screener import run_screening
@@ -14,8 +15,10 @@ from agent_reach.screening.watchlist import (
     DEFAULT_KEYWORDS,
     Entity,
     Watchlist,
+    disambiguate,
     entity_mentioned,
     match_keywords,
+    normalize_domain,
 )
 
 # ── matching ────────────────────────────────────────────────
@@ -220,7 +223,105 @@ class TestFinding:
 
     def test_to_row_keys(self):
         f = Finding(entity="Acme", source="exa", title="t", url="u", snippet="s",
-                    matched_keywords=["fraud", "fine"])
+                    matched_keywords=["fraud", "fine"], member_id="1001",
+                    confidence="high")
         row = f.to_row()
         assert row["matched_keywords"] == "fraud, fine"
         assert row["entity"] == "Acme"
+        assert row["member_id"] == "1001"
+        assert row["confidence"] == "high"
+
+    def test_id_scoped_by_member_id(self):
+        # Two members sharing a name but different member_id → different ids
+        f1 = Finding(entity="Acme", source="exa", title="t", url="u", snippet="", member_id="1")
+        f2 = Finding(entity="Acme", source="exa", title="t", url="u", snippet="", member_id="2")
+        assert f1.id != f2.id
+
+
+# ── disambiguation ──────────────────────────────────────────
+
+class TestDisambiguation:
+    def test_normalize_domain(self):
+        assert normalize_domain("https://www.Acme-Corp.com/about") == "acme-corp.com"
+        assert normalize_domain("globex.io") == "globex.io"
+        assert normalize_domain("") == ""
+
+    def test_domain_match_is_high(self):
+        e = Entity(name="Acme", domain="https://www.acme.com")
+        conf, reason = disambiguate("Acme sued", "https://news.site/acme.com-story", e)
+        assert conf == "high"
+
+    def test_full_domain_in_text_is_high(self):
+        e = Entity(name="Acme", domain="acme.com")
+        conf, _ = disambiguate("acme.com fined by regulator", "http://x", e)
+        assert conf == "high"
+
+    def test_corroborator_is_medium(self):
+        e = Entity(name="Acme", domain="", industry="fintech")
+        conf, _ = disambiguate("Acme fintech firm under investigation", "http://x", e)
+        assert conf == "medium"
+
+    def test_name_only_is_low(self):
+        e = Entity(name="Acme")
+        conf, _ = disambiguate("Acme lawsuit", "http://x", e)
+        assert conf == "low"
+
+    def test_min_confidence_filters(self):
+        wl = Watchlist.from_dict({
+            "entities": [{"name": "Acme", "domain": "acme.com"}],
+            "keywords": ["fraud"],
+            "sources": {"exa": True},
+        })
+        # name-only hit (no domain in text/url) → low; medium floor drops it
+        low_hit = RawResult(source="exa", title="Acme fraud", url="http://x")
+
+        class Src(Source):
+            name = "exa"
+            def available(self):
+                return True, "ok"
+            def search(self, q, limit=10):
+                return [low_hit]
+
+        assert run_screening(wl, [Src()], min_confidence="medium") == []
+        assert len(run_screening(wl, [Src()], min_confidence="low")) == 1
+
+
+# ── member ingest ───────────────────────────────────────────
+
+class TestMemberIngest:
+    def _csv(self, tmp_path, text):
+        p = tmp_path / "members.csv"
+        p.write_text(text, encoding="utf-8")
+        return p
+
+    def test_load_basic(self, tmp_path):
+        p = self._csv(tmp_path,
+            "member_id,name,website,industry,location\n"
+            "42,Acme Corp,https://acme.com,Manufacturing,Ohio\n")
+        wl = load_member_watchlist(p)
+        e = wl.entities[0]
+        assert e.name == "Acme Corp" and e.member_id == "42"
+        assert e.domain == "acme.com" and e.industry == "Manufacturing"
+
+    def test_header_aliases(self, tmp_path):
+        # 'company' and 'url' instead of 'name'/'website'
+        p = self._csv(tmp_path, "id,company,url\n7,Globex,globex.io\n")
+        wl = load_member_watchlist(p)
+        assert wl.entities[0].name == "Globex"
+        assert wl.entities[0].member_id == "7"
+        assert wl.entities[0].domain == "globex.io"
+
+    def test_aliases_split(self, tmp_path):
+        p = self._csv(tmp_path, "name,aliases\nAcme,Acme Corp;ACME\n")
+        wl = load_member_watchlist(p)
+        assert wl.entities[0].aliases == ["Acme Corp", "ACME"]
+
+    def test_missing_name_column_raises(self, tmp_path):
+        p = self._csv(tmp_path, "foo,bar\n1,2\n")
+        with pytest.raises(ValueError):
+            load_member_watchlist(p)
+
+    def test_rows_without_name_skipped(self, tmp_path):
+        p = self._csv(tmp_path, "name,website\nAcme,acme.com\n,orphan.com\n")
+        wl = load_member_watchlist(p)
+        assert len(wl.entities) == 1

@@ -33,9 +33,21 @@ class RawResult:
         return " ".join(p for p in (self.title, self.snippet, self.author) if p)
 
 
+# Confidence tiers, ordered. "high" = firmographic domain match (almost
+# certainly the right member); "medium" = a corroborating signal (industry /
+# location) present; "low" = name + keyword only (needs the downstream AI
+# verification node before trusting). The numeric rank drives --min-confidence.
+CONFIDENCE_RANK = {"low": 1, "medium": 2, "high": 3}
+
+
 @dataclass
 class Finding:
-    """A matched result: an entity mentioned alongside a risk keyword."""
+    """A matched result: an entity mentioned alongside a risk keyword.
+
+    Carries the member tie-back (member_id, domain) and a disambiguation
+    `confidence` so downstream consumers — a spreadsheet, or an n8n AI
+    verification node — can triage right vs. wrong-entity hits.
+    """
 
     entity: str
     source: str
@@ -45,24 +57,33 @@ class Finding:
     matched_keywords: List[str] = field(default_factory=list)
     author: str = ""
     published: Optional[str] = None
+    member_id: str = ""
+    domain: str = ""
+    confidence: str = "low"
+    confidence_reason: str = ""
 
     @property
     def id(self) -> str:
         """Stable dedup id.
 
-        Keyed on (entity, source, url) so the same article surfacing for two
-        different alliance entities is reported once per entity, and a re-run
-        never re-reports the same hit. Falls back to the title when a source
-        gives no URL.
+        Keyed on (member, source, url) so the same article surfacing for two
+        different members is reported once per member, and a re-run never
+        re-reports the same hit. Falls back to entity name when no member_id,
+        and to the title when a source gives no URL.
         """
-        basis = f"{self.entity.lower()}|{self.source}|{(self.url or self.title).strip().lower()}"
+        who = self.member_id or self.entity.lower()
+        basis = f"{who}|{self.source}|{(self.url or self.title).strip().lower()}"
         return hashlib.sha1(basis.encode("utf-8")).hexdigest()[:16]
 
     def to_row(self) -> dict:
-        """Flat dict for spreadsheet/CSV sinks."""
+        """Flat dict for spreadsheet/CSV sinks and JSON output (n8n)."""
         return {
             "id": self.id,
+            "member_id": self.member_id,
             "entity": self.entity,
+            "domain": self.domain,
+            "confidence": self.confidence,
+            "confidence_reason": self.confidence_reason,
             "source": self.source,
             "title": self.title,
             "url": self.url,

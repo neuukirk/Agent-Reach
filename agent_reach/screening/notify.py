@@ -36,14 +36,17 @@ def format_report(program: str, findings: List[Finding], run_date: str) -> str:
     for f in findings:
         by_entity[f.entity].append(f)
 
+    _conf_icon = {"high": "🟢", "medium": "🟡", "low": "⚪"}
     for entity in sorted(by_entity):
         items = by_entity[entity]
-        lines.append(f"*{entity}* ({len(items)})")
+        member = f" `#{items[0].member_id}`" if items[0].member_id else ""
+        lines.append(f"*{entity}*{member} ({len(items)})")
         for f in items:
             kw = ", ".join(f.matched_keywords)
             title = f.title or "(untitled)"
             link = f"<{f.url}|{title}>" if f.url else title
-            meta = f"  _[{f.source}]_ — keywords: {kw}"
+            icon = _conf_icon.get(f.confidence, "⚪")
+            meta = f"  {icon} _[{f.source}]_ {f.confidence} — keywords: {kw}"
             lines.append(f"• {link}")
             lines.append(meta)
         lines.append("")
