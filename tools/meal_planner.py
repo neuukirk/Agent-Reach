@@ -46,6 +46,10 @@ AISLE_RULES: list[tuple[str, list[str]]] = [
                           "worcestershire"]),
     ("Pantry & Canned", ["garlic powder", "garlic paste", "garlic salt",
                           "onion powder", "ginger paste", "tomato paste"]),
+    # Guard before Bakery so "breadcrumbs"/"panko" don't read as "bread".
+    ("Pantry & Canned", ["breadcrumb", "panko", "corn flake", "cornflake"]),
+    ("Bakery", ["bread", "bun", "bagel", "baguette", "croissant", "ciabatta",
+                "sourdough", "slider", "dinner roll", "brioche"]),
     ("Dairy & Eggs", ["cream cheese", "sour cream", "cottage cheese",
                        "creme fraiche", "crème fraîche", "heavy cream",
                        "evaporated milk", "buttermilk", "greek yogurt", "yogurt",
@@ -79,8 +83,37 @@ AISLE_RULES: list[tuple[str, list[str]]] = [
                           "coffee", "tea", "cereal", "oat", "honey", "jam"]),
 ]
 
-AISLE_ORDER = ["Produce", "Meat & Seafood", "Dairy & Eggs", "Pantry & Canned",
-               "Frozen", "Household", "Other"]
+DEFAULT_AISLE_ORDER = ["Produce", "Bakery", "Meat & Seafood", "Dairy & Eggs",
+                       "Pantry & Canned", "Frozen", "Household", "Other"]
+
+STORE_FILE = SHOPPING_DIR / "store.yaml"
+
+
+def load_store() -> tuple[str, list[str] | None]:
+    if STORE_FILE.exists():
+        data = yaml.safe_load(STORE_FILE.read_text()) or {}
+        return data.get("store", "Your store"), data.get("sections") or None
+    return "Your store", None
+
+
+def aisle_order() -> list[str]:
+    """Section order for shopping lists — driven by shopping/store.yaml, with any
+    routed-but-unlisted sections appended so nothing is ever dropped."""
+    _, sections = load_store()
+    order = list(sections) if sections else list(DEFAULT_AISLE_ORDER)
+    routed = []
+    for aisle, _ in AISLE_RULES:
+        if aisle not in routed:
+            routed.append(aisle)
+    routed.append("Other")
+    for cat in routed:
+        if cat not in order:
+            order.append(cat)
+    return order
+
+
+# Back-compat alias; prefer aisle_order() which honors the store layout.
+AISLE_ORDER = DEFAULT_AISLE_ORDER
 
 IG_URL_RE = re.compile(r"https?://(?:www\.)?instagram\.com/\S+")
 
@@ -341,7 +374,7 @@ def _staples_html(staples: dict) -> str:
 
 def _shop_html(aisles: dict[str, list[str]]) -> str:
     out = []
-    for aisle in AISLE_ORDER:
+    for aisle in aisle_order():
         if aisle in aisles:
             out.append(f'<div class="aisle"><h3>{html.escape(aisle)}</h3>')
             for item in aisles[aisle]:
@@ -358,7 +391,7 @@ def generate_cookbook_html(recipes: list[dict]) -> str:
     useful even in viewers that don't run JavaScript (e.g. mobile previews)."""
     import json
     staples = load_staples()
-    data = {"aisleOrder": AISLE_ORDER, "staples": staples, "recipes": []}
+    data = {"aisleOrder": aisle_order(), "staples": staples, "recipes": []}
     for r in recipes:
         data["recipes"].append({
             "slug": r["slug"], "title": r["title"], "cuisine": r["cuisine"],
@@ -378,7 +411,9 @@ def generate_cookbook_html(recipes: list[dict]) -> str:
                        for it in items if it.get("default")]
     default_shop = build_shopping_list(plan_slugs, default_staples)
 
+    store_name, _ = load_store()
     out = COOKBOOK_TEMPLATE.replace("__DATA__", json.dumps(data))
+    out = out.replace("__STORE__", html.escape(store_name))
     out = out.replace("__PLAN_SUMMARY__", _plan_summary_html(default_plan))
     out = out.replace("__PLAN_LIST__", _plan_cards_html(default_plan))
     out = out.replace("__STAPLES__", _staples_html(staples))
@@ -501,7 +536,7 @@ COOKBOOK_TEMPLATE = r"""<!DOCTYPE html>
       <button class="primary" id="buildBtn">Build shopping list</button>
       <button id="resetBtn">Reset to usuals</button>
     </div>
-    <p class="muted">Check off the usuals you need this week, then build your list.</p>
+    <p class="muted">Check off the usuals you need this week, then build your list — grouped and ordered for __STORE__.</p>
     <div id="staples">__STAPLES__</div>
     <h3 style="margin-top:28px">Your list</h3>
     <div id="shopOut">__SHOP_OUT__</div>
@@ -815,7 +850,7 @@ def select_plan(recipes: list[dict], days: int, mode: str, shuffle: bool,
 
 def build_shopping_list(slugs: list[str],
                         extra_items: list[str] | None = None) -> dict[str, list[str]]:
-    aisles: dict[str, list[str]] = {a: [] for a in AISLE_ORDER}
+    aisles: dict[str, list[str]] = {a: [] for a in aisle_order()}
     seen: set[str] = set()
 
     def add(item: str) -> None:
@@ -887,7 +922,7 @@ def print_plan(chosen: list[dict], mode: str, show_list: bool) -> None:
 def print_shopping_list(slugs: list[str]) -> None:
     lst = build_shopping_list(slugs)
     print("🛒  Shopping List\n")
-    for aisle in AISLE_ORDER:
+    for aisle in aisle_order():
         if aisle in lst:
             print(f"  {aisle}")
             for item in lst[aisle]:
@@ -899,8 +934,10 @@ def write_shopping_list_md(aisles: dict[str, list[str]], slugs: list[str],
                            title: str) -> Path:
     from datetime import date
     SHOPPING_DIR.mkdir(exist_ok=True)
-    lines = [f"# 🛒 Shopping List — {title}", "", f"_{date.today().isoformat()}_", ""]
-    for aisle in AISLE_ORDER:
+    store_name, _ = load_store()
+    lines = [f"# 🛒 Shopping List — {title}", "",
+             f"_{date.today().isoformat()} · ordered for {store_name}_", ""]
+    for aisle in aisle_order():
         if aisle in aisles:
             lines.append(f"## {aisle}")
             for item in aisles[aisle]:
@@ -946,7 +983,7 @@ def cmd_shop(recipes: list[dict], args: argparse.Namespace) -> int:
 
 def print_shopping_list_aisles(aisles: dict[str, list[str]]) -> None:
     print("🛒  Shopping List\n")
-    for aisle in AISLE_ORDER:
+    for aisle in aisle_order():
         if aisle in aisles:
             print(f"  {aisle}")
             for item in aisles[aisle]:
