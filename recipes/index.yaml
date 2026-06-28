@@ -243,3 +243,73 @@ recipes:
     est_cost_usd: 5
     protein: chicken
     tags: [quick, snack]
+
+  - file: lemon-garlic-chicken-alfredo.md
+    title: Lemon Garlic Chicken Alfredo
+    category: main
+    cuisine: Italian
+    time_min: 40
+    servings: 4
+    est_cost_usd: 13
+    protein: chicken
+    tags: [comfort]
+
+  - file: sheet-pan-crunchwraps.md
+    title: Sheet Pan Crunchwraps
+    category: main
+    cuisine: Mexican
+    time_min: 45
+    servings: 6
+    est_cost_usd: 15
+    protein: beef
+    tags: [crowd]
+
+  - file: slow-cooker-pulled-beef.md
+    title: Ultimate Slow-Cooked Pulled Beef
+    category: main
+    cuisine: British
+    time_min: 540
+    servings: 6
+    est_cost_usd: 16
+    protein: beef
+    tags: [meal-prep, slow-cooker]
+
+  - file: garlic-parmesan-cheeseburger-bombs.md
+    title: Garlic Parmesan Cheeseburger Bombs
+    category: main
+    cuisine: American
+    time_min: 35
+    servings: 8
+    est_cost_usd: 11
+    protein: beef
+    tags: []
+
+  - file: bbq-cheeseburger-sliders.md
+    title: BBQ Cheeseburger Sliders
+    category: main
+    cuisine: American
+    time_min: 30
+    servings: 6
+    est_cost_usd: 13
+    protein: beef
+    tags: [crowd]
+
+  - file: korean-popcorn-chicken.md
+    title: Korean Popcorn Chicken
+    category: main
+    cuisine: Korean
+    time_min: 30
+    servings: 2
+    est_cost_usd: 7
+    protein: chicken
+    tags: [quick]
+
+  - file: broccoli-cheddar-soup.md
+    title: Broccoli Cheddar Soup
+    category: main
+    cuisine: American
+    time_min: 40
+    servings: 4
+    est_cost_usd: 8
+    protein: vegetarian
+    tags: [comfort, vegetarian]
