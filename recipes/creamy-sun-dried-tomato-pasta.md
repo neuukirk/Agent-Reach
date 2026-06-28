@@ -2,7 +2,7 @@
 
 **Source:** [@laurakrecic on Instagram](https://www.instagram.com/reel/DY4w-KTu0uz/)
 
-> ⚠️ **Partial:** The caption listed ingredients but not the step-by-step method (it's shown in the video). The creator notes it's a ~20-minute dish. Check the reel for exact steps.
+> Method filled in from web sources matching the creator's ingredient list ([Cook This Again Mom](https://cookthisagainmom.com/creamy-sun-dried-tomato-pasta/) / [Budget Bytes](https://www.budgetbytes.com/one-pot-creamy-sun-dried-tomato-pasta/)) — the reel only listed ingredients. ~20-minute dish.
 
 ## Ingredients
 - 16 oz spaghetti
@@ -18,4 +18,9 @@
 - Red pepper flakes (optional)
 
 ## Instructions
-_Not included in the caption — see the video for the method. A typical approach: sauté garlic in butter, add sun-dried tomatoes, stir in broth, cream cheese, and milk to make a sauce, season, toss with cooked spaghetti, and finish with parmesan._
+1. Cook the spaghetti in salted water until al dente; drain (reserve a splash of pasta water).
+2. Melt the butter in a large pot or deep skillet over medium heat. Add the minced garlic and sun-dried tomatoes; cook 1–2 minutes until fragrant.
+3. Stir in the chicken broth, dried basil, and black pepper; bring to a simmer.
+4. Add the cubed cream cheese and stir until fully melted and smooth. Pour in the milk and stir to form a creamy sauce.
+5. Add the parmesan and stir until melted. Let the sauce thicken 2–3 minutes.
+6. Toss in the cooked spaghetti until coated, loosening with reserved pasta water if needed. Finish with red pepper flakes if using, and serve.

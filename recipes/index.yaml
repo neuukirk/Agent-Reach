@@ -1,0 +1,245 @@
+# Recipe metadata manifest — powers tools/meal_planner.py and the README index.
+# Add a block here whenever you add a recipe .md file.
+# est_cost_usd = rough total cost to make the whole recipe (US grocery prices).
+# cost_per_serving is derived automatically by the planner (est_cost_usd / servings).
+
+recipes:
+  - file: dumpling-lasagna.md
+    title: Dumpling Lasagna
+    category: main
+    cuisine: Chinese
+    time_min: 45
+    servings: 4
+    est_cost_usd: 9
+    protein: pork
+    tags: [comfort]
+
+  - file: high-protein-mcgriddle-slices.md
+    title: High-Protein McGriddle Slices
+    category: breakfast
+    cuisine: American
+    time_min: 50
+    servings: 6
+    est_cost_usd: 7
+    protein: beef
+    tags: [high-protein, meal-prep]
+
+  - file: creamy-jalapeno-sauce.md
+    title: Creamy Jalapeño Sauce
+    category: sauce
+    cuisine: Mexican
+    time_min: 10
+    servings: 8
+    est_cost_usd: 5
+    protein: none
+    tags: [sauce, condiment, quick]
+
+  - file: sausage-gravy-biscuit-casserole.md
+    title: Sausage Gravy Biscuit Casserole
+    category: breakfast
+    cuisine: American
+    time_min: 50
+    servings: 6
+    est_cost_usd: 7
+    protein: pork
+    tags: [comfort]
+
+  - file: chicken-pickle-skewers.md
+    title: Chicken Pickle Skewers
+    category: main
+    cuisine: American
+    time_min: 40
+    servings: 4
+    est_cost_usd: 10
+    protein: chicken
+    tags: []
+
+  - file: garlic-butter-soy-honey-chicken-sandwich.md
+    title: Garlic Butter Crispy Soy Honey Chicken Sandwich
+    category: main
+    cuisine: Asian-fusion
+    time_min: 30
+    servings: 2
+    est_cost_usd: 6
+    protein: chicken
+    tags: [high-protein]
+
+  - file: orange-pepper-chicken.md
+    title: Orange Pepper Chicken
+    category: main
+    cuisine: Asian-fusion
+    time_min: 45
+    servings: 4
+    est_cost_usd: 12
+    protein: chicken
+    tags: []
+
+  - file: taco-crunch-supreme-wrap.md
+    title: Taco Crunch Supreme Wrap
+    category: main
+    cuisine: Mexican
+    time_min: 40
+    servings: 10
+    est_cost_usd: 18
+    protein: beef
+    tags: [crowd]
+
+  - file: chilli-peanut-chicken-noodles.md
+    title: High-Protein Chilli Peanut Chicken Noodles
+    category: main
+    cuisine: Asian
+    time_min: 30
+    servings: 4
+    est_cost_usd: 12
+    protein: chicken
+    tags: [high-protein, meal-prep, quick]
+
+  - file: butter-chicken-crispy-masala-potatoes.md
+    title: High-Protein Butter Chicken & Crispy Masala Potatoes
+    category: main
+    cuisine: Indian
+    time_min: 50
+    servings: 4
+    est_cost_usd: 13
+    protein: chicken
+    tags: [high-protein, meal-prep]
+
+  - file: chicken-shawarma-rice-bowls.md
+    title: High-Protein Chicken Shawarma Rice Bowls
+    category: main
+    cuisine: Middle Eastern
+    time_min: 40
+    servings: 4
+    est_cost_usd: 12
+    protein: chicken
+    tags: [high-protein, meal-prep]
+
+  - file: buffalo-chicken-potato-bowls.md
+    title: High-Protein Buffalo Chicken Potato Bowls
+    category: main
+    cuisine: American
+    time_min: 40
+    servings: 4
+    est_cost_usd: 12
+    protein: chicken
+    tags: [high-protein, meal-prep]
+
+  - file: marry-me-tortellini.md
+    title: Marry Me Tortellini
+    category: main
+    cuisine: Italian
+    time_min: 20
+    servings: 4
+    est_cost_usd: 11
+    protein: vegetarian
+    tags: [quick, comfort, vegetarian]
+
+  - file: creamy-sun-dried-tomato-pasta.md
+    title: Creamy Sun-Dried Tomato Pasta
+    category: main
+    cuisine: Italian
+    time_min: 20
+    servings: 6
+    est_cost_usd: 10
+    protein: vegetarian
+    tags: [quick, vegetarian]
+
+  - file: buffalo-chicken-hot-pockets.md
+    title: High-Protein Buffalo Chicken Hot Pockets
+    category: main
+    cuisine: American
+    time_min: 60
+    servings: 10
+    est_cost_usd: 16
+    protein: chicken
+    tags: [high-protein, meal-prep]
+
+  - file: hot-honey-buffalo-chicken-dip-melt.md
+    title: Hot Honey Buffalo Chicken Dip Melt
+    category: main
+    cuisine: American
+    time_min: 30
+    servings: 2
+    est_cost_usd: 12
+    protein: chicken
+    tags: [quick]
+
+  - file: chilli-oil-chicken-dumplings.md
+    title: Chilli Oil Chicken Dumplings
+    category: main
+    cuisine: Chinese
+    time_min: 40
+    servings: 3
+    est_cost_usd: 7
+    protein: chicken
+    tags: []
+
+  - file: garlic-parmesan-chicken-strips.md
+    title: Garlic Parmesan Chicken Strips
+    category: main
+    cuisine: American
+    time_min: 35
+    servings: 4
+    est_cost_usd: 11
+    protein: chicken
+    tags: []
+
+  - file: philly-cheesesteak-pasta.md
+    title: Philly Cheesesteak Pasta
+    category: main
+    cuisine: American
+    time_min: 30
+    servings: 2
+    est_cost_usd: 8
+    protein: beef
+    tags: [quick, high-protein]
+
+  - file: copycat-mcdonalds-chicken-nuggets.md
+    title: Copycat McDonald's Chicken Nuggets
+    category: main
+    cuisine: American
+    time_min: 20
+    servings: 4
+    est_cost_usd: 6
+    protein: chicken
+    tags: [quick]
+
+  - file: potatoes-dauphinoise.md
+    title: Potatoes Dauphinoise
+    category: side
+    cuisine: French
+    time_min: 90
+    servings: 8
+    est_cost_usd: 9
+    protein: vegetarian
+    tags: [side, vegetarian]
+
+  - file: korean-gochujang-mac-and-cheese.md
+    title: Korean Gochujang Mac and Cheese
+    category: main
+    cuisine: Korean
+    time_min: 40
+    servings: 4
+    est_cost_usd: 9
+    protein: vegetarian
+    tags: [comfort, vegetarian]
+
+  - file: chicken-pot-pie-pasta.md
+    title: One-Pot Chicken Pot Pie Pasta
+    category: main
+    cuisine: American
+    time_min: 35
+    servings: 5
+    est_cost_usd: 11
+    protein: chicken
+    tags: [quick, comfort, one-pot]
+
+  - file: garlic-parmesan-pizza-rolls.md
+    title: Garlic Parmesan Pizza Rolls
+    category: snack
+    cuisine: American
+    time_min: 15
+    servings: 4
+    est_cost_usd: 5
+    protein: chicken
+    tags: [quick, snack]

@@ -2,7 +2,7 @@
 
 **Source:** [@fairfiteats on Instagram](https://www.instagram.com/reel/DZk6CVEIAJo/)
 
-> ⚠️ **Partial:** The caption listed full ingredients plus freeze/reheat notes, but not the assembly/bake steps (shown in the video). Check the reel for the method.
+> Method filled in from a matching web recipe ([imhungryforthat.com](https://imhungryforthat.com/buffalo-chicken-hot-pockets/)) — the reel only listed ingredients + freeze/reheat notes.
 
 **Yield:** 10 hot pockets
 **Macros (per serving):** 425 cal | 50 g protein | 44 g carbs | 4 g fat
@@ -37,7 +37,11 @@
 - 0.25 cup (60 g) fat-free milk
 
 ## Instructions
-_Assembly and bake steps not in the caption — see the video._
+1. **Cook the chicken:** Add the chicken breasts to a slow cooker and season with garlic salt, smoked paprika, ranch seasoning, and black pepper. Add the salsa, diced onions, and buffalo sauce; mix lightly. Cover and cook on low 6–7 hours (or high 3–4 hours) until tender. Shred and stir in the chives. Let cool slightly.
+2. **Make the dough:** Mix the self-rising flour, Greek yogurt, garlic salt, and Italian seasoning in a bowl until a dough forms. Knead lightly until smooth, then divide into 10 equal portions. Roll each into a flat oval/rectangle.
+3. **Buffalo sauce:** Blend the cottage cheese, cream cheese, garlic salt, black pepper, onion powder, buffalo sauce, and milk until smooth (use as a sauce/dip with the pockets).
+4. **Assemble:** Spoon the buffalo chicken onto one half of each dough piece, top with mozzarella, fold the dough over, and seal the edges tightly, pressing well around the filling.
+5. **Cook:** Either bake at 200°C/400°F for ~18–20 minutes until golden, or cook in a lightly greased nonstick pan over medium heat ~4–5 minutes per side until golden and hot through.
 
 ## Freezing & Reheating
 - **Freeze:** Wrap in foil or place in airtight freezer bags; store up to 1 month.
