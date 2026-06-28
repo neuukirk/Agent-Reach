@@ -395,8 +395,8 @@ COOKBOOK_TEMPLATE = r"""<!DOCTYPE html>
           <option>3</option><option selected>5</option><option>7</option>
         </select>
       </label>
-      <button class="primary" onclick="doPlan(false)">Generate week</button>
-      <button onclick="doPlan(true)">🔀 Shuffle</button>
+      <button class="primary" id="genBtn">Generate week</button>
+      <button id="shufBtn">🔀 Shuffle</button>
     </div>
     <div class="summary" id="planSummary"></div>
     <div id="planList"></div>
@@ -405,8 +405,8 @@ COOKBOOK_TEMPLATE = r"""<!DOCTYPE html>
   <section class="panel" id="shop">
     <div class="controls">
       <label class="inline"><input type="checkbox" id="incPlan" checked> Include this week's plan ingredients</label>
-      <button class="primary" onclick="buildList()">Build shopping list</button>
-      <button onclick="checkDefaults()">Reset to usuals</button>
+      <button class="primary" id="buildBtn">Build shopping list</button>
+      <button id="resetBtn">Reset to usuals</button>
     </div>
     <p class="muted">Check off the usuals you need this week, then build your list.</p>
     <div id="staples"></div>
@@ -416,7 +416,7 @@ COOKBOOK_TEMPLATE = r"""<!DOCTYPE html>
 
   <section class="panel" id="browse">
     <div class="controls"><label class="inline">Sort
-      <select id="sort" onchange="renderBrowse()">
+      <select id="sort">
         <option value="cps">Cost</option><option value="time">Time</option>
         <option value="cuisine">Cuisine</option>
       </select></label>
@@ -424,9 +424,9 @@ COOKBOOK_TEMPLATE = r"""<!DOCTYPE html>
     <div id="browseList"></div>
   </section>
 
-  <div id="modal" class="modal" onclick="if(event.target===this)closeHowTo()">
+  <div id="modal" class="modal">
     <div class="modal-box">
-      <button class="modal-x" onclick="closeHowTo()">✕</button>
+      <button class="modal-x" id="mClose">✕</button>
       <h2 id="mTitle" style="color:#f4efe9"></h2>
       <div class="modal-grid">
         <div id="mReel"></div>
@@ -436,9 +436,9 @@ COOKBOOK_TEMPLATE = r"""<!DOCTYPE html>
             <div class="mstep" id="mStep"></div>
             <div class="bar"><div class="fill" id="mFill"></div></div>
             <div class="controls">
-              <button onclick="howToStep(-1)">‹ Prev</button>
-              <button class="primary" id="mPlay" onclick="howToToggle()">▶ Play</button>
-              <button onclick="howToStep(1)">Next ›</button>
+              <button id="mPrev">‹ Prev</button>
+              <button class="primary" id="mPlay">▶ Play</button>
+              <button id="mNext">Next ›</button>
             </div>
           </div>
         </div>
@@ -495,7 +495,7 @@ function doPlan(shuffle){
       <div class="day">${DAYS[i] || 'Day '+(i+1)}</div>
       <div><strong>${r.title}</strong></div>
       <div class="meta">${r.cuisine} · ${r.time} min · $${r.cost} ($${r.cps.toFixed(2)}/serving) · serves ${r.servings}</div>
-      <div class="meta">📹 <a href="#" onclick="openHowTo('${r.slug}');return false">how-to</a>${r.video ? ` · <a href="${r.video}" target="_blank">original reel</a>` : ''}</div>
+      <div class="meta">📹 <a href="#" data-howto="${r.slug}">how-to</a>${r.video ? ` · <a href="${r.video}" target="_blank">original reel</a>` : ''}</div>
     </div>`).join('');
 }
 
@@ -537,9 +537,13 @@ function buildList(){
     html += `</div>`;
   });
   if (!html) html = '<p class="muted">Nothing selected yet — check some usuals or generate a plan first.</p>';
-  else html += `<button onclick='navigator.clipboard.writeText(${JSON.stringify(plain)})' style="margin-top:8px">📋 Copy list</button>`;
+  else html += `<button id="copyBtn" style="margin-top:8px">📋 Copy list</button>`;
   document.getElementById('shopOut').innerHTML = html;
+  lastList = plain;
+  const cb = document.getElementById('copyBtn');
+  if (cb) cb.addEventListener('click', () => navigator.clipboard.writeText(lastList));
 }
+let lastList = '';
 
 // --- browse ---
 function renderBrowse(){
@@ -551,7 +555,7 @@ function renderBrowse(){
   document.getElementById('browseList').innerHTML = `<div class="grid">` + rs.map(r => `
     <div class="card recipe-row">
       <div><strong>${r.title}</strong><div class="muted">${r.cuisine} · ${r.time} min · $${r.cps.toFixed(2)}/serving</div></div>
-      <div style="text-align:right"><a href="#" onclick="openHowTo('${r.slug}');return false">📹 how-to</a></div>
+      <div style="text-align:right"><a href="#" data-howto="${r.slug}">📹 how-to</a></div>
     </div>`).join('') + `</div>`;
 }
 
@@ -597,6 +601,24 @@ function howToToggle(){ htPlaying ? htStop() : htPlay(); }
 function howToStep(d){ const n = htI + d;
   if (n >= 0 && n < htSteps.length){ htI = n; renderHowTo(); if (htPlaying) htSchedule(); } }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHowTo(); });
+
+// --- wire all handlers from JS (no inline on* attributes) ---
+document.getElementById('genBtn').addEventListener('click', () => doPlan(false));
+document.getElementById('shufBtn').addEventListener('click', () => doPlan(true));
+document.getElementById('buildBtn').addEventListener('click', buildList);
+document.getElementById('resetBtn').addEventListener('click', checkDefaults);
+document.getElementById('sort').addEventListener('change', renderBrowse);
+document.getElementById('mClose').addEventListener('click', closeHowTo);
+document.getElementById('mPrev').addEventListener('click', () => howToStep(-1));
+document.getElementById('mNext').addEventListener('click', () => howToStep(1));
+document.getElementById('mPlay').addEventListener('click', howToToggle);
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target.id === 'modal') closeHowTo(); });
+// Event delegation for dynamically-rendered "how-to" links.
+document.body.addEventListener('click', e => {
+  const a = e.target.closest('[data-howto]');
+  if (a) { e.preventDefault(); openHowTo(a.dataset.howto); }
+});
 
 renderStaples(); renderBrowse(); doPlan(false);
 </script>
