@@ -7,7 +7,10 @@ python tools/meal_planner.py plan --mode budget   # cheapest week
 python tools/meal_planner.py plan --mode variety  # mix of cuisines
 python tools/meal_planner.py plan --mode quick    # fastest to cook
 python tools/meal_planner.py plan --shuffle        # reshuffle picks
+python tools/meal_planner.py video <slug>          # build a how-to player
 ```
+
+Each recipe links its original Instagram reel, and `video <slug>` (or `video all`) generates a self-contained HTML how-to player in `recipes/videos/` — the reel embedded next to an auto-advancing, step-by-step slideshow. Open it in any browser.
 
 ## American
 

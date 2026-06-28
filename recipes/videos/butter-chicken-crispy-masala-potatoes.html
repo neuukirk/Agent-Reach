@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>High-Protein Butter Chicken &amp; Crispy Masala Potatoes — How-To</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, system-ui, sans-serif;
+         background: #14110f; color: #f4efe9; }
+  header { padding: 20px 24px; background: #1e1a16; border-bottom: 1px solid #2c2722; }
+  h1 { margin: 0; font-size: 22px; }
+  .wrap { display: flex; flex-wrap: wrap; gap: 24px; padding: 24px; }
+  .col { flex: 1 1 340px; min-width: 300px; }
+  .reel { width: 100%; height: 640px; border-radius: 14px; background: #000; }
+  .noreel { color: #998f82; }
+  .stage { background: #1e1a16; border: 1px solid #2c2722; border-radius: 14px;
+            padding: 28px; min-height: 260px; display: flex; flex-direction: column; }
+  .counter { color: #d98a3d; font-weight: 600; letter-spacing: .04em; font-size: 13px; }
+  .step { font-size: 26px; line-height: 1.45; margin: 16px 0 auto; }
+  .bar { height: 4px; background: #2c2722; border-radius: 2px; margin-top: 20px; overflow: hidden; }
+  .fill { height: 100%; width: 0; background: #d98a3d; transition: width .25s linear; }
+  .controls { display: flex; gap: 10px; margin-top: 18px; }
+  button { flex: 1; padding: 12px; font-size: 15px; border: 0; border-radius: 9px;
+            background: #2c2722; color: #f4efe9; cursor: pointer; }
+  button.primary { background: #d98a3d; color: #14110f; font-weight: 700; }
+  button:hover { filter: brightness(1.12); }
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .05em; color: #998f82; }
+  ul { padding-left: 20px; line-height: 1.7; }
+</style>
+</head>
+<body>
+<header><h1>🍳 High-Protein Butter Chicken &amp; Crispy Masala Potatoes</h1></header>
+<div class="wrap">
+  <div class="col"><iframe class="reel" src="https://www.instagram.com/reel/DBE3m6Go794/embed" frameborder="0" scrolling="no" allowtransparency="true"></iframe></div>
+  <div class="col">
+    <div class="stage">
+      <div class="counter" id="counter"></div>
+      <div class="step" id="step"></div>
+      <div class="bar"><div class="fill" id="fill"></div></div>
+      <div class="controls">
+        <button id="prev">‹ Prev</button>
+        <button id="play" class="primary">▶ Play</button>
+        <button id="next">Next ›</button>
+      </div>
+    </div>
+    <h2>Ingredients</h2>
+    <ul><li>800 g boneless skinless chicken thighs, cubed</li><li>1 tbsp garlic paste</li><li>1.5 tsp salt</li><li>1.5 tsp garam masala</li><li>1.5 tsp paprika</li><li>½ tsp turmeric</li><li>1 tsp chili powder</li><li>80–100 g low-fat yogurt</li><li>Juice of 1 whole lemon</li><li>800 g white potatoes, cubed</li><li>1 tsp salt</li><li>1 tsp paprika</li><li>1 tsp garam masala</li><li>1 tsp garlic powder</li><li>2 tsp olive oil (optional)</li><li>40 g light butter</li><li>150 g sliced white onion</li><li>½ tsp each: salt, garam masala, paprika, turmeric</li><li>1 tsp garlic paste</li><li>60 g raw cashew nuts</li><li>600 g canned or fresh chopped tomatoes</li><li>100 g low-fat yogurt</li><li>60 ml light evaporated milk</li><li>50 g low-fat yogurt</li><li>20–25 ml milk</li></ul>
+  </div>
+</div>
+<script>
+const steps = [
+    {"text": "Marinate chicken: Combine cubed thighs with garlic paste, salt, garam masala, paprika, turmeric, chili powder, yogurt, and lemon juice. Marinate at least 30 minutes (or overnight).", "secs": 10},
+    {"text": "Cook chicken: Air fry at 200\u00b0C/400\u00b0F for 18\u201320 minutes, or pan-fry 3\u20134 minutes per side over medium heat.", "secs": 7},
+    {"text": "Potatoes: Toss cubed potatoes with salt, paprika, garam masala, garlic powder, and optional olive oil. Air fry at 200\u00b0C/400\u00b0F for 20 minutes.", "secs": 9},
+    {"text": "Sauce base: Saut\u00e9 onions in butter ~5 minutes until softened. Add garlic paste and cashews, mix well.", "secs": 7},
+    {"text": "Build sauce: Add tomatoes, cover, and simmer on low 6\u20138 minutes until the tomatoes break down. Cool before blending.", "secs": 8},
+    {"text": "Finish: Blend the sauce with yogurt and evaporated milk. Combine with the cooked chicken.", "secs": 6},
+    {"text": "Serve: Mix the white sauce ingredients for a drizzle. Plate the chicken with the crispy potatoes.", "secs": 6}
+];
+let i = 0, playing = false, timer = null, t0 = 0, raf = null;
+const stepEl = document.getElementById('step');
+const counterEl = document.getElementById('counter');
+const fillEl = document.getElementById('fill');
+const playBtn = document.getElementById('play');
+function render() {
+  stepEl.textContent = steps[i].text;
+  counterEl.textContent = 'STEP ' + (i + 1) + ' / ' + steps.length;
+  fillEl.style.width = '0%';
+}
+function tickBar() {
+  const pct = Math.min(100, ((Date.now() - t0) / (steps[i].secs * 1000)) * 100);
+  fillEl.style.width = pct + '%';
+  if (playing) raf = requestAnimationFrame(tickBar);
+}
+function schedule() {
+  clearTimeout(timer); cancelAnimationFrame(raf);
+  t0 = Date.now(); tickBar();
+  timer = setTimeout(() => {
+    if (i < steps.length - 1) { i++; render(); schedule(); }
+    else { stop(); }
+  }, steps[i].secs * 1000);
+}
+function play() { playing = true; playBtn.textContent = '⏸ Pause'; schedule(); }
+function stop() { playing = false; playBtn.textContent = '▶ Play';
+  clearTimeout(timer); cancelAnimationFrame(raf); }
+playBtn.onclick = () => playing ? stop() : play();
+document.getElementById('next').onclick = () => {
+  if (i < steps.length - 1) { i++; render(); if (playing) schedule(); } };
+document.getElementById('prev').onclick = () => {
+  if (i > 0) { i--; render(); if (playing) schedule(); } };
+render();
+</script>
+</body>
+</html>
