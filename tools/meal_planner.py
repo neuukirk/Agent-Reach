@@ -8,9 +8,12 @@ shopping list. Cost-optimized by default; toggle other modes with ``--mode``.
 Each recipe links back to its original Instagram reel, so the plan doubles as a
 set of how-to videos (see the "📹" line per recipe).
 
+Cooking for one: the planner covers a target number of dinners using the fewest
+recipes, scheduling leftover nights between cook days (batch & leftovers).
+
 Usage:
-  python tools/meal_planner.py plan [--days N] [--mode budget|variety|quick]
-                                    [--shuffle] [--seed N]
+  python tools/meal_planner.py plan [--meals N] [--mode budget|variety|quick]
+                                    [--leftover-cap N] [--shuffle] [--seed N]
                                     [--pin SLUG ...] [--exclude SLUG ...]
                                     [--no-shopping-list]
   python tools/meal_planner.py list [--sort cost|time|cuisine]
@@ -321,26 +324,34 @@ def _js(s: str) -> str:
 _WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 
-def _plan_cards_html(plan: list[dict]) -> str:
+def _plan_cards_html(rows: list[tuple[str, str, dict]]) -> str:
     out = []
-    for i, r in enumerate(plan):
-        day = _WEEK_DAYS[i] if i < len(_WEEK_DAYS) else f"Day {i + 1}"
-        vid = video_link(r["slug"])
-        reel = f' · <a href="{vid}" target="_blank">original reel</a>' if vid else ""
-        out.append(
-            f'<div class="card"><div class="day">{day}</div>'
-            f'<div><strong>{html.escape(r["title"])}</strong></div>'
-            f'<div class="meta">{html.escape(r["cuisine"])} · {r["time_min"]} min · '
-            f'${r["est_cost_usd"]:.0f} (${r["cost_per_serving"]:.2f}/serving) · '
-            f'serves {r["servings"]}</div>'
-            f'<div class="meta">📹 <a href="#" data-howto="{r["slug"]}">how-to</a>'
-            f'{reel}</div></div>')
+    for day, kind, r in rows:
+        if kind == "cook":
+            vid = video_link(r["slug"])
+            reel = (f' · <a href="{vid}" target="_blank">original reel</a>'
+                    if vid else "")
+            out.append(
+                f'<div class="card"><div class="day">{day} · 🍳 Cook</div>'
+                f'<div><strong>{html.escape(r["title"])}</strong></div>'
+                f'<div class="meta">{html.escape(r["cuisine"])} · {r["time_min"]} min · '
+                f'serves {r["servings"]} · ${r["est_cost_usd"]:.0f}</div>'
+                f'<div class="meta">📹 <a href="#" data-howto="{r["slug"]}">how-to</a>'
+                f'{reel}</div></div>')
+        else:
+            out.append(
+                f'<div class="card"><div class="day">{day} · ♻️ Leftovers</div>'
+                f'<div><strong>{html.escape(r["title"])}</strong></div>'
+                f'<div class="meta">from your batch — no cooking</div></div>')
     return "".join(out)
 
 
-def _plan_summary_html(plan: list[dict], mode: str = "budget") -> str:
-    total = sum(r["est_cost_usd"] for r in plan)
-    return f"{len(plan)} dinners · est. ${total:.0f} groceries · mode: {mode}"
+def _plan_summary_html(chosen: list[dict], rows: list[tuple[str, str, dict]],
+                       mode: str = "budget") -> str:
+    total = sum(slot["recipe"]["est_cost_usd"] for slot in chosen)
+    cooks = len(chosen)
+    return (f"{len(rows)} dinners · {cooks} cook session{'s' if cooks != 1 else ''} "
+            f"· est. ${total:.0f} groceries · cooking for one")
 
 
 def _browse_html(recipes: list[dict]) -> str:
@@ -404,9 +415,11 @@ def generate_cookbook_html(recipes: list[dict]) -> str:
             "ingredients": [{"t": it, "a": aisle_for(it)}
                             for it in parse_ingredients(r["slug"])],
         })
-    # Pre-rendered defaults for the no-JavaScript fallback.
-    default_plan = select_plan(recipes, 5, "budget", False, None, [], set())
-    plan_slugs = [r["slug"] for r in default_plan]
+    # Pre-rendered defaults for the no-JavaScript fallback (cook-for-one, ~7 meals).
+    default_meals = 7
+    default_plan = select_batch_plan(recipes, default_meals, "budget", False, None)
+    default_rows = plan_schedule(default_plan, default_meals)
+    plan_slugs = [slot["recipe"]["slug"] for slot in default_plan]
     default_staples = [it["item"] for items in staples.values()
                        for it in items if it.get("default")]
     default_shop = build_shopping_list(plan_slugs, default_staples)
@@ -414,8 +427,8 @@ def generate_cookbook_html(recipes: list[dict]) -> str:
     store_name, _ = load_store()
     out = COOKBOOK_TEMPLATE.replace("__DATA__", json.dumps(data))
     out = out.replace("__STORE__", html.escape(store_name))
-    out = out.replace("__PLAN_SUMMARY__", _plan_summary_html(default_plan))
-    out = out.replace("__PLAN_LIST__", _plan_cards_html(default_plan))
+    out = out.replace("__PLAN_SUMMARY__", _plan_summary_html(default_plan, default_rows))
+    out = out.replace("__PLAN_LIST__", _plan_cards_html(default_rows))
     out = out.replace("__STAPLES__", _staples_html(staples))
     out = out.replace("__SHOP_OUT__", _shop_html(default_shop))
     out = out.replace("__BROWSE_LIST__", _browse_html(recipes))
@@ -518,9 +531,9 @@ COOKBOOK_TEMPLATE = r"""<!DOCTYPE html>
           <option value="quick">Quick (fastest)</option>
         </select>
       </label>
-      <label class="inline">Dinners
+      <label class="inline">Dinners to cover
         <select id="days">
-          <option>3</option><option selected>5</option><option>7</option>
+          <option>5</option><option selected>7</option><option>10</option><option>14</option>
         </select>
       </label>
       <button class="primary" id="genBtn">Generate week</button>
@@ -587,45 +600,77 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   document.getElementById(t.dataset.tab).classList.add('active');
 });
 
-// --- planner ---
+// --- planner (cooking for one: cover N dinners, eat leftovers between cooks) ---
+const LEFTOVER_CAP = 4;
 function weight(r, mode){ return mode === 'quick' ? 1/Math.max(5, r.time) : 1/Math.max(0.25, r.cps); }
-function planWeek(mode, days, shuffle){
+function planWeek(mode, meals, shuffle){
   let pool = DATA.recipes.filter(r => r.category === 'main');
   if (mode === 'budget') pool.sort((a,b) => a.cps-b.cps || a.time-b.time);
   else if (mode === 'quick') pool.sort((a,b) => a.time-b.time || a.cps-b.cps);
   else pool.sort((a,b) => a.cps-b.cps);
   const cap0 = mode === 'variety' ? 1 : 2;
-  let chosen = [], slugs = new Set(), cc = {};
-  function pick(cap){
+  let chosen = [], slugs = new Set(), cc = {}, covered = 0;
+  function commit(r){
+    const fills = Math.max(1, Math.min(r.servings, LEFTOVER_CAP, meals - covered));
+    chosen.push({recipe: r, fills, extra: r.servings - fills});
+    slugs.add(r.slug); cc[r.cuisine] = (cc[r.cuisine]||0)+1; covered += fills;
+  }
+  let cap = cap0;
+  while (covered < meals){
     let elig = pool.filter(r => !slugs.has(r.slug) && (cc[r.cuisine]||0) < cap);
-    if (!elig.length) return false;
+    if (!elig.length){ cap++; if (cap > cap0 + meals) break; continue; }
     let r;
     if (shuffle){
       let tot = elig.reduce((s,x) => s+weight(x,mode), 0), rnd = Math.random()*tot, up = 0;
       r = elig[elig.length-1];
       for (const e of elig){ up += weight(e,mode); if (up >= rnd){ r = e; break; } }
     } else r = elig[0];
-    chosen.push(r); slugs.add(r.slug); cc[r.cuisine] = (cc[r.cuisine]||0)+1; return true;
+    commit(r);
   }
-  let cap = cap0;
-  while (chosen.length < days){ if (!pick(cap)){ cap++; if (cap > days+cap0) break; } }
-  return chosen.slice(0, days);
+  return chosen;
 }
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+function scheduleRows(chosen, meals){
+  const rows = []; let di = 0;
+  for (const slot of chosen){
+    if (di >= meals) break;
+    rows.push({day: DAYS[di] || 'Day '+(di+1), kind: 'cook', r: slot.recipe});
+    di++;
+    for (let k = 0; k < slot.fills - 1; k++){
+      if (di >= meals) break;
+      rows.push({day: DAYS[di] || 'Day '+(di+1), kind: 'leftover', r: slot.recipe});
+      di++;
+    }
+  }
+  return rows;
+}
 function doPlan(shuffle){
   const mode = document.getElementById('mode').value;
-  const days = +document.getElementById('days').value;
-  currentPlan = planWeek(mode, days, shuffle);
-  const total = currentPlan.reduce((s,r) => s+r.cost, 0);
+  const meals = +document.getElementById('days').value;
+  const chosen = planWeek(mode, meals, shuffle);
+  const rows = scheduleRows(chosen, meals);
+  currentPlan = chosen.map(s => s.recipe);  // unique recipes, for the shopping list
+  const total = chosen.reduce((s,x) => s + x.recipe.cost, 0);
+  const cooks = chosen.length;
   document.getElementById('planSummary').textContent =
-    `${currentPlan.length} dinners · est. $${total.toFixed(0)} groceries · mode: ${mode}`;
-  document.getElementById('planList').innerHTML = currentPlan.map((r,i) => `
-    <div class="card">
-      <div class="day">${DAYS[i] || 'Day '+(i+1)}</div>
+    `${rows.length} dinners · ${cooks} cook session${cooks!==1?'s':''} · est. $${total.toFixed(0)} groceries · cooking for one`;
+  const cards = rows.map(row => {
+    const r = row.r;
+    if (row.kind === 'cook') return `
+    <div class="card"><div class="day">${row.day} · 🍳 Cook</div>
       <div><strong>${r.title}</strong></div>
-      <div class="meta">${r.cuisine} · ${r.time} min · $${r.cost} ($${r.cps.toFixed(2)}/serving) · serves ${r.servings}</div>
+      <div class="meta">${r.cuisine} · ${r.time} min · serves ${r.servings} · $${r.cost}</div>
       <div class="meta">📹 <a href="#" data-howto="${r.slug}">how-to</a>${r.video ? ` · <a href="${r.video}" target="_blank">original reel</a>` : ''}</div>
-    </div>`).join('');
+    </div>`;
+    return `
+    <div class="card"><div class="day">${row.day} · ♻️ Leftovers</div>
+      <div><strong>${r.title}</strong></div>
+      <div class="meta">from your batch — no cooking</div>
+    </div>`;
+  }).join('');
+  const extras = chosen.filter(s => s.extra > 0).map(s =>
+    `<div class="meta" style="margin-top:6px">• ${s.recipe.title}: ${s.extra} extra serving${s.extra!==1?'s':''} — freeze or pack for lunch</div>`).join('');
+  document.getElementById('planList').innerHTML = cards + extras;
 }
 
 // --- shopping ---
@@ -844,6 +889,83 @@ def select_plan(recipes: list[dict], days: int, mode: str, shuffle: bool,
     return chosen[:days]
 
 
+def select_batch_plan(recipes: list[dict], meals: int, mode: str, shuffle: bool,
+                      seed: int | None, leftover_cap: int = 4,
+                      pins: list[str] | None = None,
+                      excludes: set[str] | None = None) -> list[dict]:
+    """Cooking-for-one planner: pick the fewest recipes whose servings cover
+    `meals` dinners, eating leftovers between cook days. Each serving = one
+    dinner; a recipe fills up to `leftover_cap` consecutive days so you're not
+    eating the same thing all week. Returns slots: {recipe, fills, extra}."""
+    pins = pins or []
+    excludes = excludes or set()
+    pool = [r for r in recipes
+            if r.get("category") == "main" and r["slug"] not in excludes]
+    if mode == "budget":
+        pool.sort(key=lambda r: (r["cost_per_serving"], r["time_min"]))
+    elif mode == "quick":
+        pool.sort(key=lambda r: (r["time_min"], r["cost_per_serving"]))
+    else:
+        pool.sort(key=lambda r: r["cost_per_serving"])
+
+    rng = random.Random(seed if seed is not None else (None if shuffle else 0))
+    index = by_slug(recipes)
+    chosen: list[dict] = []
+    slugs: set[str] = set()
+    cuisines: dict[str, int] = {}
+    covered = 0
+
+    def commit(r: dict) -> None:
+        nonlocal covered
+        fills = max(1, min(r["servings"], leftover_cap, meals - covered))
+        chosen.append({"recipe": r, "fills": fills, "extra": r["servings"] - fills})
+        slugs.add(r["slug"])
+        cuisines[r["cuisine"]] = cuisines.get(r["cuisine"], 0) + 1
+        covered += fills
+
+    for slug in pins:
+        r = index.get(slug)
+        if r and r["slug"] not in slugs and covered < meals:
+            commit(r)
+
+    base_cap = 1 if mode == "variety" else 2
+    cap = base_cap
+    while covered < meals:
+        eligible = [r for r in pool if r["slug"] not in slugs
+                    and cuisines.get(r["cuisine"], 0) < cap]
+        if not eligible:
+            cap += 1
+            if cap > base_cap + meals:
+                break
+            continue
+        if shuffle:
+            weights = [_weight(r, mode) for r in eligible]
+            r = rng.choices(eligible, weights=weights, k=1)[0]
+        else:
+            r = eligible[0]
+        commit(r)
+    return chosen
+
+
+def plan_schedule(chosen: list[dict], meals: int) -> list[tuple[str, str, dict]]:
+    """Lay the chosen slots across the week as (day, 'cook'|'leftover', recipe)."""
+    rows: list[tuple[str, str, dict]] = []
+    di = 0
+    for slot in chosen:
+        if di >= meals:
+            break
+        day = _WEEK_DAYS[di] if di < len(_WEEK_DAYS) else f"Day {di + 1}"
+        rows.append((day, "cook", slot["recipe"]))
+        di += 1
+        for _ in range(slot["fills"] - 1):
+            if di >= meals:
+                break
+            day = _WEEK_DAYS[di] if di < len(_WEEK_DAYS) else f"Day {di + 1}"
+            rows.append((day, "leftover", slot["recipe"]))
+            di += 1
+    return rows
+
+
 # ---------------------------------------------------------------------------
 # Shopping list
 # ---------------------------------------------------------------------------
@@ -897,26 +1019,32 @@ def print_staples(defaults_only: bool = False) -> None:
 # Output
 # ---------------------------------------------------------------------------
 
-def print_plan(chosen: list[dict], mode: str, show_list: bool) -> None:
-    days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-    total_cost = sum(r["est_cost_usd"] for r in chosen)
-    print(f"\n🍽  Weekly Meal Plan  ·  mode: {mode}  ·  {len(chosen)} dinners\n")
-    for i, r in enumerate(chosen):
-        day = days[i] if i < len(days) else f"Day {i + 1}"
-        print(f"  {day}  {r['title']}")
-        print(f"        {r['cuisine']} · {r['time_min']} min · "
-              f"${r['est_cost_usd']:.0f} (${r['cost_per_serving']:.2f}/serving) · "
-              f"serves {r['servings']}")
-        vid = video_link(r["slug"])
-        if vid:
-            print(f"        📹 How-to video: {vid}")
-        print()
-    avg = total_cost / len(chosen) if chosen else 0
-    print(f"  ── Est. groceries: ${total_cost:.0f} total "
-          f"(avg ${avg:.0f}/recipe) ──\n")
+def print_plan(chosen: list[dict], mode: str, show_list: bool, meals: int) -> None:
+    rows = plan_schedule(chosen, meals)
+    total_cost = sum(slot["recipe"]["est_cost_usd"] for slot in chosen)
+    cooks = len(chosen)
+    print(f"\n🍽  Weekly Plan (cooking for one)  ·  {len(rows)} dinners  ·  "
+          f"{cooks} cook session{'s' if cooks != 1 else ''}  ·  mode: {mode}\n")
+    for day, kind, r in rows:
+        if kind == "cook":
+            print(f"  {day}  🍳 Cook: {r['title']}")
+            print(f"           {r['cuisine']} · {r['time_min']} min · "
+                  f"serves {r['servings']} · ${r['est_cost_usd']:.0f}")
+            vid = video_link(r["slug"])
+            if vid:
+                print(f"           📹 {vid}")
+        else:
+            print(f"  {day}  ♻️  Leftovers: {r['title']}")
+    print()
+    for slot in chosen:
+        if slot["extra"] > 0:
+            print(f"  • {slot['recipe']['title']}: {slot['extra']} extra "
+                  f"serving(s) — freeze or pack for lunch")
+    print(f"\n  ── Est. groceries: ${total_cost:.0f}  ·  "
+          f"{cooks} cook session{'s' if cooks != 1 else ''} this week ──\n")
 
     if show_list:
-        print_shopping_list([r["slug"] for r in chosen])
+        print_shopping_list([slot["recipe"]["slug"] for slot in chosen])
 
 
 def print_shopping_list(slugs: list[str]) -> None:
@@ -961,11 +1089,11 @@ def write_shopping_list_md(aisles: dict[str, list[str]], slugs: list[str],
 def cmd_shop(recipes: list[dict], args: argparse.Namespace) -> int:
     slugs = list(args.recipes)
     if args.plan_days:
-        plan = select_plan(recipes, args.plan_days, args.plan_mode,
-                           args.shuffle, args.seed, [], set())
-        for r in plan:
-            if r["slug"] not in slugs:
-                slugs.append(r["slug"])
+        plan = select_batch_plan(recipes, args.plan_days, args.plan_mode,
+                                 args.shuffle, args.seed)
+        for slot in plan:
+            if slot["recipe"]["slug"] not in slugs:
+                slugs.append(slot["recipe"]["slug"])
     valid = {r["slug"] for r in recipes}
     unknown = [s for s in slugs if s not in valid]
     if unknown:
@@ -1051,7 +1179,10 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("plan", help="build a weekly plan + shopping list")
-    p.add_argument("--days", type=int, default=5)
+    p.add_argument("--meals", "--days", type=int, default=7, dest="meals",
+                   help="dinners to cover for the week (cooking for one)")
+    p.add_argument("--leftover-cap", type=int, default=4, dest="leftover_cap",
+                   help="max consecutive days to eat the same dish")
     p.add_argument("--mode", choices=["budget", "variety", "quick"], default="budget")
     p.add_argument("--shuffle", action="store_true", help="reshuffle the picks")
     p.add_argument("--seed", type=int, default=None)
@@ -1088,12 +1219,13 @@ def main(argv: list[str] | None = None) -> int:
     recipes = load_recipes()
 
     if args.command == "plan":
-        chosen = select_plan(recipes, args.days, args.mode, args.shuffle,
-                             args.seed, args.pin, set(args.exclude))
+        chosen = select_batch_plan(recipes, args.meals, args.mode, args.shuffle,
+                                   args.seed, args.leftover_cap, args.pin,
+                                   set(args.exclude))
         if not chosen:
             print("No recipes matched.")
             return 1
-        print_plan(chosen, args.mode, not args.no_shopping_list)
+        print_plan(chosen, args.mode, not args.no_shopping_list, args.meals)
     elif args.command == "list":
         print_list(recipes, args.sort)
     elif args.command == "shopping":

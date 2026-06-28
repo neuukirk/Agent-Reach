@@ -23,9 +23,12 @@ assistant** baked in, backed by the saved recipes in `recipes/`.
 
 ## Planner flow
 
-- Run `python tools/meal_planner.py plan --mode budget` (or `variety` / `quick`
-  per the user's preference; add `--shuffle` to reshuffle, `--days N` to size it).
-- Show the week with per-dinner cost, time, and the 📹 how-to link.
+- The planner cooks for one: it covers a target number of dinners (`--meals N`,
+  default 7) with the fewest recipes, scheduling leftover nights between cooks.
+- Run `python tools/meal_planner.py plan --mode budget` (or `variety` / `quick`;
+  add `--shuffle` to reshuffle, `--meals N` to size the week,
+  `--leftover-cap N` to cap how many days you eat the same dish).
+- Show the cook/leftover schedule, cook-session count, cost, and 📹 how-to links.
 - If they like it, carry the chosen recipe slugs into the shopping flow.
 
 ## Shopping assistant flow ("run me through my usuals")
