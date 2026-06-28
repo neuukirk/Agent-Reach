@@ -601,7 +601,7 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
 });
 
 // --- planner (cooking for one: cover N dinners, eat leftovers between cooks) ---
-const LEFTOVER_CAP = 4;
+const LEFTOVER_CAP = 2;  // max nights per dish (never consecutive)
 function weight(r, mode){ return mode === 'quick' ? 1/Math.max(5, r.time) : 1/Math.max(0.25, r.cps); }
 function planWeek(mode, meals, shuffle){
   let pool = DATA.recipes.filter(r => r.category === 'main');
@@ -631,16 +631,19 @@ function planWeek(mode, meals, shuffle){
 }
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 function scheduleRows(chosen, meals){
-  const rows = []; let di = 0;
-  for (const slot of chosen){
-    if (di >= meals) break;
-    rows.push({day: DAYS[di] || 'Day '+(di+1), kind: 'cook', r: slot.recipe});
-    di++;
-    for (let k = 0; k < slot.fills - 1; k++){
-      if (di >= meals) break;
-      rows.push({day: DAYS[di] || 'Day '+(di+1), kind: 'leftover', r: slot.recipe});
-      di++;
-    }
+  // Interleave so a dish never lands on consecutive nights (greedy: each night
+  // pick the dish with the most remaining servings that wasn't last night's).
+  const remaining = chosen.map(s => s.fills);
+  const cooked = chosen.map(() => false);
+  const rows = []; let prev = -1;
+  for (let di = 0; di < meals; di++){
+    let cand = remaining.map((n,i) => i).filter(i => remaining[i] > 0 && i !== prev);
+    if (!cand.length) cand = remaining.map((n,i) => i).filter(i => remaining[i] > 0);
+    if (!cand.length) break;
+    let idx = cand.reduce((best,i) => remaining[i] > remaining[best] ? i : best, cand[0]);
+    rows.push({day: DAYS[di] || 'Day '+(di+1),
+               kind: cooked[idx] ? 'leftover' : 'cook', r: chosen[idx].recipe});
+    cooked[idx] = true; remaining[idx]--; prev = idx;
   }
   return rows;
 }
@@ -890,13 +893,14 @@ def select_plan(recipes: list[dict], days: int, mode: str, shuffle: bool,
 
 
 def select_batch_plan(recipes: list[dict], meals: int, mode: str, shuffle: bool,
-                      seed: int | None, leftover_cap: int = 4,
+                      seed: int | None, leftover_cap: int = 2,
                       pins: list[str] | None = None,
                       excludes: set[str] | None = None) -> list[dict]:
-    """Cooking-for-one planner: pick the fewest recipes whose servings cover
-    `meals` dinners, eating leftovers between cook days. Each serving = one
-    dinner; a recipe fills up to `leftover_cap` consecutive days so you're not
-    eating the same thing all week. Returns slots: {recipe, fills, extra}."""
+    """Cooking-for-one planner: pick recipes whose servings cover `meals`
+    dinners, eating leftovers between cook days. Each serving = one dinner; a
+    dish is used at most `leftover_cap` nights total (default 2: cook once + one
+    leftover), and the schedule spreads them out so you never eat the same thing
+    on consecutive nights. Returns slots: {recipe, fills, extra}."""
     pins = pins or []
     excludes = excludes or set()
     pool = [r for r in recipes
@@ -948,21 +952,27 @@ def select_batch_plan(recipes: list[dict], meals: int, mode: str, shuffle: bool,
 
 
 def plan_schedule(chosen: list[dict], meals: int) -> list[tuple[str, str, dict]]:
-    """Lay the chosen slots across the week as (day, 'cook'|'leftover', recipe)."""
+    """Lay the chosen slots across the week as (day, 'cook'|'leftover', recipe),
+    interleaving so the same dish never falls on consecutive nights (greedy:
+    each night pick the dish with the most remaining servings that wasn't last
+    night's). First time a dish appears is a 'cook' night; repeats are leftovers."""
+    remaining = [slot["fills"] for slot in chosen]
+    cooked = [False] * len(chosen)
     rows: list[tuple[str, str, dict]] = []
-    di = 0
-    for slot in chosen:
-        if di >= meals:
+    prev = -1
+    for di in range(meals):
+        cand = [i for i in range(len(chosen)) if remaining[i] > 0 and i != prev]
+        if not cand:
+            cand = [i for i in range(len(chosen)) if remaining[i] > 0]
+        if not cand:
             break
+        idx = max(cand, key=lambda i: (remaining[i], -i))
         day = _WEEK_DAYS[di] if di < len(_WEEK_DAYS) else f"Day {di + 1}"
-        rows.append((day, "cook", slot["recipe"]))
-        di += 1
-        for _ in range(slot["fills"] - 1):
-            if di >= meals:
-                break
-            day = _WEEK_DAYS[di] if di < len(_WEEK_DAYS) else f"Day {di + 1}"
-            rows.append((day, "leftover", slot["recipe"]))
-            di += 1
+        rows.append((day, "cook" if not cooked[idx] else "leftover",
+                     chosen[idx]["recipe"]))
+        cooked[idx] = True
+        remaining[idx] -= 1
+        prev = idx
     return rows
 
 
@@ -1181,8 +1191,8 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("plan", help="build a weekly plan + shopping list")
     p.add_argument("--meals", "--days", type=int, default=7, dest="meals",
                    help="dinners to cover for the week (cooking for one)")
-    p.add_argument("--leftover-cap", type=int, default=4, dest="leftover_cap",
-                   help="max consecutive days to eat the same dish")
+    p.add_argument("--leftover-cap", type=int, default=2, dest="leftover_cap",
+                   help="max nights to eat the same dish in a week (never consecutive)")
     p.add_argument("--mode", choices=["budget", "variety", "quick"], default="budget")
     p.add_argument("--shuffle", action="store_true", help="reshuffle the picks")
     p.add_argument("--seed", type=int, default=None)
