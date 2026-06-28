@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sheet Pan Crunchwraps — How-To</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, system-ui, sans-serif;
+         background: #14110f; color: #f4efe9; }
+  header { padding: 20px 24px; background: #1e1a16; border-bottom: 1px solid #2c2722; }
+  h1 { margin: 0; font-size: 22px; }
+  .wrap { display: flex; flex-wrap: wrap; gap: 24px; padding: 24px; }
+  .col { flex: 1 1 340px; min-width: 300px; }
+  .reel { width: 100%; height: 640px; border-radius: 14px; background: #000; }
+  .noreel { color: #998f82; }
+  .stage { background: #1e1a16; border: 1px solid #2c2722; border-radius: 14px;
+            padding: 28px; min-height: 260px; display: flex; flex-direction: column; }
+  .counter { color: #d98a3d; font-weight: 600; letter-spacing: .04em; font-size: 13px; }
+  .step { font-size: 26px; line-height: 1.45; margin: 16px 0 auto; }
+  .bar { height: 4px; background: #2c2722; border-radius: 2px; margin-top: 20px; overflow: hidden; }
+  .fill { height: 100%; width: 0; background: #d98a3d; transition: width .25s linear; }
+  .controls { display: flex; gap: 10px; margin-top: 18px; }
+  button { flex: 1; padding: 12px; font-size: 15px; border: 0; border-radius: 9px;
+            background: #2c2722; color: #f4efe9; cursor: pointer; }
+  button.primary { background: #d98a3d; color: #14110f; font-weight: 700; }
+  button:hover { filter: brightness(1.12); }
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .05em; color: #998f82; }
+  ul { padding-left: 20px; line-height: 1.7; }
+</style>
+</head>
+<body>
+<header><h1>🍳 Sheet Pan Crunchwraps</h1></header>
+<div class="wrap">
+  <div class="col"><iframe class="reel" src="https://www.instagram.com/reel/DXIZAvcjtIT/embed" frameborder="0" scrolling="no" allowtransparency="true"></iframe></div>
+  <div class="col">
+    <div class="stage">
+      <div class="counter" id="counter"></div>
+      <div class="step" id="step"></div>
+      <div class="bar"><div class="fill" id="fill"></div></div>
+      <div class="controls">
+        <button id="prev">‹ Prev</button>
+        <button id="play" class="primary">▶ Play</button>
+        <button id="next">Next ›</button>
+      </div>
+    </div>
+    <h2>Ingredients</h2>
+    <ul><li>7–8 burrito-size tortillas</li><li>1 lb ground beef</li><li>1 packet taco seasoning</li><li>¼ cup water</li><li>1 cup shredded Colby Jack cheese</li><li>6 tostada shells</li><li>1 jar cheese sauce</li><li>1 cup shredded lettuce</li><li>1 tomato, diced</li><li>1 cup sour cream</li><li>2 tbsp butter, melted</li><li>⅓ cup mayo</li><li>⅓ cup sour cream</li><li>1 tsp taco seasoning</li><li>2 tbsp mild taco sauce</li></ul>
+  </div>
+</div>
+<script>
+const steps = [
+    {"text": "Brown the ground beef in a skillet over medium heat; drain. Add the taco seasoning and water; simmer until thickened.", "secs": 8},
+    {"text": "Preheat oven to 400\u00b0F and grease a 9x13 sheet pan.", "secs": 5},
+    {"text": "Arrange 6 tortillas around the pan, overlapping edges to cover the bottom.", "secs": 5},
+    {"text": "Layer the taco meat, cheese sauce, tostada shells, sour cream, lettuce, tomato, and shredded cheese.", "secs": 6},
+    {"text": "Place 1\u20132 tortillas in the center; fold the overhanging tortillas inward to enclose everything.", "secs": 6},
+    {"text": "Brush the top with melted butter. Place another sheet pan on top. Bake 15 minutes, remove the top pan, then bake 10\u201315 minutes more until golden.", "secs": 10},
+    {"text": "Cool slightly, then cut into 6 crunchwraps.", "secs": 5},
+    {"text": "For the dip, mix the mayo, sour cream, taco seasoning, and mild sauce until smooth.", "secs": 6}
+];
+let i = 0, playing = false, timer = null, t0 = 0, raf = null;
+const stepEl = document.getElementById('step');
+const counterEl = document.getElementById('counter');
+const fillEl = document.getElementById('fill');
+const playBtn = document.getElementById('play');
+function render() {
+  stepEl.textContent = steps[i].text;
+  counterEl.textContent = 'STEP ' + (i + 1) + ' / ' + steps.length;
+  fillEl.style.width = '0%';
+}
+function tickBar() {
+  const pct = Math.min(100, ((Date.now() - t0) / (steps[i].secs * 1000)) * 100);
+  fillEl.style.width = pct + '%';
+  if (playing) raf = requestAnimationFrame(tickBar);
+}
+function schedule() {
+  clearTimeout(timer); cancelAnimationFrame(raf);
+  t0 = Date.now(); tickBar();
+  timer = setTimeout(() => {
+    if (i < steps.length - 1) { i++; render(); schedule(); }
+    else { stop(); }
+  }, steps[i].secs * 1000);
+}
+function play() { playing = true; playBtn.textContent = '⏸ Pause'; schedule(); }
+function stop() { playing = false; playBtn.textContent = '▶ Play';
+  clearTimeout(timer); cancelAnimationFrame(raf); }
+playBtn.onclick = () => playing ? stop() : play();
+document.getElementById('next').onclick = () => {
+  if (i < steps.length - 1) { i++; render(); if (playing) schedule(); } };
+document.getElementById('prev').onclick = () => {
+  if (i > 0) { i--; render(); if (playing) schedule(); } };
+render();
+</script>
+</body>
+</html>

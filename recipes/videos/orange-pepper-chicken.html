@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orange Pepper Chicken — How-To</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, system-ui, sans-serif;
+         background: #14110f; color: #f4efe9; }
+  header { padding: 20px 24px; background: #1e1a16; border-bottom: 1px solid #2c2722; }
+  h1 { margin: 0; font-size: 22px; }
+  .wrap { display: flex; flex-wrap: wrap; gap: 24px; padding: 24px; }
+  .col { flex: 1 1 340px; min-width: 300px; }
+  .reel { width: 100%; height: 640px; border-radius: 14px; background: #000; }
+  .noreel { color: #998f82; }
+  .stage { background: #1e1a16; border: 1px solid #2c2722; border-radius: 14px;
+            padding: 28px; min-height: 260px; display: flex; flex-direction: column; }
+  .counter { color: #d98a3d; font-weight: 600; letter-spacing: .04em; font-size: 13px; }
+  .step { font-size: 26px; line-height: 1.45; margin: 16px 0 auto; }
+  .bar { height: 4px; background: #2c2722; border-radius: 2px; margin-top: 20px; overflow: hidden; }
+  .fill { height: 100%; width: 0; background: #d98a3d; transition: width .25s linear; }
+  .controls { display: flex; gap: 10px; margin-top: 18px; }
+  button { flex: 1; padding: 12px; font-size: 15px; border: 0; border-radius: 9px;
+            background: #2c2722; color: #f4efe9; cursor: pointer; }
+  button.primary { background: #d98a3d; color: #14110f; font-weight: 700; }
+  button:hover { filter: brightness(1.12); }
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .05em; color: #998f82; }
+  ul { padding-left: 20px; line-height: 1.7; }
+</style>
+</head>
+<body>
+<header><h1>🍳 Orange Pepper Chicken</h1></header>
+<div class="wrap">
+  <div class="col"><iframe class="reel" src="https://www.instagram.com/reel/DITsSIqp91A/embed" frameborder="0" scrolling="no" allowtransparency="true"></iframe></div>
+  <div class="col">
+    <div class="stage">
+      <div class="counter" id="counter"></div>
+      <div class="step" id="step"></div>
+      <div class="bar"><div class="fill" id="fill"></div></div>
+      <div class="controls">
+        <button id="prev">‹ Prev</button>
+        <button id="play" class="primary">▶ Play</button>
+        <button id="next">Next ›</button>
+      </div>
+    </div>
+    <h2>Ingredients</h2>
+    <ul><li>2 lbs boneless chicken thighs</li><li>3 cloves garlic, minced</li><li>1 orange, juiced</li><li>½ cup low-sodium soy sauce</li><li>1 tbsp rice vinegar</li><li>1 tsp kosher salt</li><li>¼ cup olive oil</li><li>Crushed peppercorns</li><li>Garlic</li><li>Olive oil</li><li>Orange zest</li><li>Salt</li></ul>
+  </div>
+</div>
+<script>
+const steps = [
+    {"text": "Marinate: Combine the marinade ingredients in a bowl or bag, coat the chicken thoroughly, and refrigerate 2\u20134 hours (minimum 30 minutes).", "secs": 8},
+    {"text": "Cook: Grill over medium heat 12\u201315 minutes, flipping occasionally. Alternatively, air fry at 400\u00b0F for 25 minutes, or oven-bake at 400\u00b0F for ~30 minutes (flipping halfway). Target internal temperature: 170\u00b0F.", "secs": 12},
+    {"text": "Sauce: Heat a skillet over medium. Saut\u00e9 crushed peppercorns and garlic in olive oil until the garlic browns slightly, then reduce to low. Add remaining sauce ingredients quickly to prevent burning. Simmer briefly until thickened, remove from heat, add orange zest, and adjust salt.", "secs": 18},
+    {"text": "Coat the chicken in the sauce and serve.", "secs": 5}
+];
+let i = 0, playing = false, timer = null, t0 = 0, raf = null;
+const stepEl = document.getElementById('step');
+const counterEl = document.getElementById('counter');
+const fillEl = document.getElementById('fill');
+const playBtn = document.getElementById('play');
+function render() {
+  stepEl.textContent = steps[i].text;
+  counterEl.textContent = 'STEP ' + (i + 1) + ' / ' + steps.length;
+  fillEl.style.width = '0%';
+}
+function tickBar() {
+  const pct = Math.min(100, ((Date.now() - t0) / (steps[i].secs * 1000)) * 100);
+  fillEl.style.width = pct + '%';
+  if (playing) raf = requestAnimationFrame(tickBar);
+}
+function schedule() {
+  clearTimeout(timer); cancelAnimationFrame(raf);
+  t0 = Date.now(); tickBar();
+  timer = setTimeout(() => {
+    if (i < steps.length - 1) { i++; render(); schedule(); }
+    else { stop(); }
+  }, steps[i].secs * 1000);
+}
+function play() { playing = true; playBtn.textContent = '⏸ Pause'; schedule(); }
+function stop() { playing = false; playBtn.textContent = '▶ Play';
+  clearTimeout(timer); cancelAnimationFrame(raf); }
+playBtn.onclick = () => playing ? stop() : play();
+document.getElementById('next').onclick = () => {
+  if (i < steps.length - 1) { i++; render(); if (playing) schedule(); } };
+document.getElementById('prev').onclick = () => {
+  if (i > 0) { i--; render(); if (playing) schedule(); } };
+render();
+</script>
+</body>
+</html>

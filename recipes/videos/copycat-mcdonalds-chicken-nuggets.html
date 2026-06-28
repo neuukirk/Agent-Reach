@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Copycat McDonald&#x27;s Chicken Nuggets — How-To</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, system-ui, sans-serif;
+         background: #14110f; color: #f4efe9; }
+  header { padding: 20px 24px; background: #1e1a16; border-bottom: 1px solid #2c2722; }
+  h1 { margin: 0; font-size: 22px; }
+  .wrap { display: flex; flex-wrap: wrap; gap: 24px; padding: 24px; }
+  .col { flex: 1 1 340px; min-width: 300px; }
+  .reel { width: 100%; height: 640px; border-radius: 14px; background: #000; }
+  .noreel { color: #998f82; }
+  .stage { background: #1e1a16; border: 1px solid #2c2722; border-radius: 14px;
+            padding: 28px; min-height: 260px; display: flex; flex-direction: column; }
+  .counter { color: #d98a3d; font-weight: 600; letter-spacing: .04em; font-size: 13px; }
+  .step { font-size: 26px; line-height: 1.45; margin: 16px 0 auto; }
+  .bar { height: 4px; background: #2c2722; border-radius: 2px; margin-top: 20px; overflow: hidden; }
+  .fill { height: 100%; width: 0; background: #d98a3d; transition: width .25s linear; }
+  .controls { display: flex; gap: 10px; margin-top: 18px; }
+  button { flex: 1; padding: 12px; font-size: 15px; border: 0; border-radius: 9px;
+            background: #2c2722; color: #f4efe9; cursor: pointer; }
+  button.primary { background: #d98a3d; color: #14110f; font-weight: 700; }
+  button:hover { filter: brightness(1.12); }
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .05em; color: #998f82; }
+  ul { padding-left: 20px; line-height: 1.7; }
+</style>
+</head>
+<body>
+<header><h1>🍳 Copycat McDonald&#x27;s Chicken Nuggets</h1></header>
+<div class="wrap">
+  <div class="col"><iframe class="reel" src="https://www.instagram.com/reel/DV45nwUE_ap/embed" frameborder="0" scrolling="no" allowtransparency="true"></iframe></div>
+  <div class="col">
+    <div class="stage">
+      <div class="counter" id="counter"></div>
+      <div class="step" id="step"></div>
+      <div class="bar"><div class="fill" id="fill"></div></div>
+      <div class="controls">
+        <button id="prev">‹ Prev</button>
+        <button id="play" class="primary">▶ Play</button>
+        <button id="next">Next ›</button>
+      </div>
+    </div>
+    <h2>Ingredients</h2>
+    <ul><li>1 lb ground chicken</li><li>1 egg</li><li>1 tsp kosher salt</li><li>½ cup cornstarch</li><li>¾ cup water</li><li>¾ tbsp onion powder</li><li>¾ tbsp garlic powder</li><li>½ tbsp paprika</li><li>¾ tsp pepper</li><li>½ cup flour</li><li>Oil, for frying</li></ul>
+  </div>
+</div>
+<script>
+const steps = [
+    {"text": "Mix the ground chicken, egg, and salt until evenly combined and slightly sticky.", "secs": 5},
+    {"text": "Scoop tablespoon-sized portions and form into nugget shapes. Roll each thoroughly in cornstarch, coating all sides. Set aside on a tray.", "secs": 8},
+    {"text": "Whisk together the flour, water, and seasonings (onion powder, garlic powder, paprika, pepper) until smooth \u2014 like pancake batter.", "secs": 8},
+    {"text": "Dip each cornstarch-coated nugget into the batter until fully covered; let excess drip off.", "secs": 6},
+    {"text": "First fry: Heat oil to 350\u00b0F. Fry in small batches ~3 minutes until they float and turn lightly golden. Drain on paper towels.", "secs": 9},
+    {"text": "Second fry: Return to 350\u2013360\u00b0F oil for ~2 minutes until golden brown and crispy.", "secs": 6},
+    {"text": "Drain on a wire rack, rest briefly, and serve with your favorite dipping sauce.", "secs": 6}
+];
+let i = 0, playing = false, timer = null, t0 = 0, raf = null;
+const stepEl = document.getElementById('step');
+const counterEl = document.getElementById('counter');
+const fillEl = document.getElementById('fill');
+const playBtn = document.getElementById('play');
+function render() {
+  stepEl.textContent = steps[i].text;
+  counterEl.textContent = 'STEP ' + (i + 1) + ' / ' + steps.length;
+  fillEl.style.width = '0%';
+}
+function tickBar() {
+  const pct = Math.min(100, ((Date.now() - t0) / (steps[i].secs * 1000)) * 100);
+  fillEl.style.width = pct + '%';
+  if (playing) raf = requestAnimationFrame(tickBar);
+}
+function schedule() {
+  clearTimeout(timer); cancelAnimationFrame(raf);
+  t0 = Date.now(); tickBar();
+  timer = setTimeout(() => {
+    if (i < steps.length - 1) { i++; render(); schedule(); }
+    else { stop(); }
+  }, steps[i].secs * 1000);
+}
+function play() { playing = true; playBtn.textContent = '⏸ Pause'; schedule(); }
+function stop() { playing = false; playBtn.textContent = '▶ Play';
+  clearTimeout(timer); cancelAnimationFrame(raf); }
+playBtn.onclick = () => playing ? stop() : play();
+document.getElementById('next').onclick = () => {
+  if (i < steps.length - 1) { i++; render(); if (playing) schedule(); } };
+document.getElementById('prev').onclick = () => {
+  if (i > 0) { i--; render(); if (playing) schedule(); } };
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+# Your store's layout — shopping lists are ordered to match this front-to-back
+# walk path. Reorder the sections to fit your specific Food Lion, or change the
+# store name. Sections with no items are simply skipped.
+
+store: Food Lion
+sections:
+  - Produce
+  - Bakery
+  - Meat & Seafood
+  - Dairy & Eggs
+  - Pantry & Canned
+  - Frozen
+  - Household
+  - Other

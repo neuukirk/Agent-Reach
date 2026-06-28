@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Garlic Butter Crispy Soy Honey Chicken Sandwich — How-To</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, system-ui, sans-serif;
+         background: #14110f; color: #f4efe9; }
+  header { padding: 20px 24px; background: #1e1a16; border-bottom: 1px solid #2c2722; }
+  h1 { margin: 0; font-size: 22px; }
+  .wrap { display: flex; flex-wrap: wrap; gap: 24px; padding: 24px; }
+  .col { flex: 1 1 340px; min-width: 300px; }
+  .reel { width: 100%; height: 640px; border-radius: 14px; background: #000; }
+  .noreel { color: #998f82; }
+  .stage { background: #1e1a16; border: 1px solid #2c2722; border-radius: 14px;
+            padding: 28px; min-height: 260px; display: flex; flex-direction: column; }
+  .counter { color: #d98a3d; font-weight: 600; letter-spacing: .04em; font-size: 13px; }
+  .step { font-size: 26px; line-height: 1.45; margin: 16px 0 auto; }
+  .bar { height: 4px; background: #2c2722; border-radius: 2px; margin-top: 20px; overflow: hidden; }
+  .fill { height: 100%; width: 0; background: #d98a3d; transition: width .25s linear; }
+  .controls { display: flex; gap: 10px; margin-top: 18px; }
+  button { flex: 1; padding: 12px; font-size: 15px; border: 0; border-radius: 9px;
+            background: #2c2722; color: #f4efe9; cursor: pointer; }
+  button.primary { background: #d98a3d; color: #14110f; font-weight: 700; }
+  button:hover { filter: brightness(1.12); }
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .05em; color: #998f82; }
+  ul { padding-left: 20px; line-height: 1.7; }
+</style>
+</head>
+<body>
+<header><h1>🍳 Garlic Butter Crispy Soy Honey Chicken Sandwich</h1></header>
+<div class="wrap">
+  <div class="col"><iframe class="reel" src="https://www.instagram.com/reel/DFNmGL7JCut/embed" frameborder="0" scrolling="no" allowtransparency="true"></iframe></div>
+  <div class="col">
+    <div class="stage">
+      <div class="counter" id="counter"></div>
+      <div class="step" id="step"></div>
+      <div class="bar"><div class="fill" id="fill"></div></div>
+      <div class="controls">
+        <button id="prev">‹ Prev</button>
+        <button id="play" class="primary">▶ Play</button>
+        <button id="next">Next ›</button>
+      </div>
+    </div>
+    <h2>Ingredients</h2>
+    <ul><li>4 oz chicken breast</li><li>Flour</li><li>Egg</li><li>Crushed corn flakes</li><li>Light butter</li><li>Minced garlic</li><li>Light soy sauce</li><li>1 tsp brown sugar</li><li>Honey</li><li>¼ cup water</li><li>Light sour cream</li><li>Sriracha</li><li>Ciabatta bread</li><li>1 whole cucumber</li><li>Red onion slices</li><li>Avocado oil</li><li>Hot sauce</li><li>Salt and pepper</li><li>Grated garlic</li><li>Parsley</li><li>Red pepper flakes</li></ul>
+  </div>
+</div>
+<script>
+const steps = [
+    {"text": "Dredge chicken in flour, then egg, then crushed corn flakes.", "secs": 5},
+    {"text": "Air fry at 385\u00b0F for 16 minutes, flipping halfway, until internal temperature reaches 165\u00b0F.", "secs": 6},
+    {"text": "In a pan, combine light butter, minced garlic, soy sauce, brown sugar, and honey with \u00bc cup water. Reduce until thickened.", "secs": 8},
+    {"text": "Mix light sour cream with sriracha for the sauce.", "secs": 5},
+    {"text": "Combine cucumber, red onion, avocado oil, hot sauce, salt, pepper, grated garlic, parsley, and red pepper flakes; toss together.", "secs": 8},
+    {"text": "Assemble on ciabatta: chicken coated in the soy honey sauce, sriracha sour cream, and the cucumber mixture.", "secs": 7}
+];
+let i = 0, playing = false, timer = null, t0 = 0, raf = null;
+const stepEl = document.getElementById('step');
+const counterEl = document.getElementById('counter');
+const fillEl = document.getElementById('fill');
+const playBtn = document.getElementById('play');
+function render() {
+  stepEl.textContent = steps[i].text;
+  counterEl.textContent = 'STEP ' + (i + 1) + ' / ' + steps.length;
+  fillEl.style.width = '0%';
+}
+function tickBar() {
+  const pct = Math.min(100, ((Date.now() - t0) / (steps[i].secs * 1000)) * 100);
+  fillEl.style.width = pct + '%';
+  if (playing) raf = requestAnimationFrame(tickBar);
+}
+function schedule() {
+  clearTimeout(timer); cancelAnimationFrame(raf);
+  t0 = Date.now(); tickBar();
+  timer = setTimeout(() => {
+    if (i < steps.length - 1) { i++; render(); schedule(); }
+    else { stop(); }
+  }, steps[i].secs * 1000);
+}
+function play() { playing = true; playBtn.textContent = '⏸ Pause'; schedule(); }
+function stop() { playing = false; playBtn.textContent = '▶ Play';
+  clearTimeout(timer); cancelAnimationFrame(raf); }
+playBtn.onclick = () => playing ? stop() : play();
+document.getElementById('next').onclick = () => {
+  if (i < steps.length - 1) { i++; render(); if (playing) schedule(); } };
+document.getElementById('prev').onclick = () => {
+  if (i > 0) { i--; render(); if (playing) schedule(); } };
+render();
+</script>
+</body>
+</html>
