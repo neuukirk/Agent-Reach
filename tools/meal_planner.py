@@ -301,6 +301,8 @@ def generate_cookbook_html(recipes: list[dict]) -> str:
             "servings": r["servings"], "cost": r["est_cost_usd"],
             "cps": r["cost_per_serving"], "tags": r.get("tags", []),
             "video": video_link(r["slug"]),
+            "embed": reel_embed_url(r["slug"]),
+            "steps": parse_steps(r["slug"]),
             "ingredients": [{"t": it, "a": aisle_for(it)}
                             for it in parse_ingredients(r["slug"])],
         })
@@ -351,6 +353,22 @@ COOKBOOK_TEMPLATE = r"""<!DOCTYPE html>
   .muted { color: #998f82; font-size: 13px; }
   textarea { width: 100%; height: 160px; background: #14110f; color: #cfc6ba;
              border: 1px solid #2c2722; border-radius: 9px; padding: 12px; font: inherit; }
+  .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.72);
+           z-index: 50; padding: 24px; overflow: auto; }
+  .modal.open { display: block; }
+  .modal-box { max-width: 920px; margin: 24px auto; background: #1e1a16;
+               border: 1px solid #2c2722; border-radius: 14px; padding: 22px; position: relative; }
+  .modal-x { position: absolute; top: 14px; right: 14px; background: #2c2722;
+             border-radius: 8px; padding: 6px 11px; }
+  .modal-grid { display: grid; grid-template-columns: 320px 1fr; gap: 20px; margin-top: 12px; }
+  @media (max-width: 720px) { .modal-grid { grid-template-columns: 1fr; } }
+  .modal-grid iframe { width: 100%; height: 560px; border: 0; border-radius: 12px; background: #000; }
+  .stage { background: #14110f; border: 1px solid #2c2722; border-radius: 12px;
+           padding: 22px; min-height: 240px; display: flex; flex-direction: column; }
+  .counter { color: #d98a3d; font-weight: 600; font-size: 13px; letter-spacing: .04em; }
+  .mstep { font-size: 22px; line-height: 1.45; margin: 14px 0 auto; }
+  .bar { height: 4px; background: #2c2722; border-radius: 2px; margin-top: 18px; overflow: hidden; }
+  .fill { height: 100%; width: 0; background: #d98a3d; }
 </style>
 </head>
 <body>
@@ -405,6 +423,28 @@ COOKBOOK_TEMPLATE = r"""<!DOCTYPE html>
     </div>
     <div id="browseList"></div>
   </section>
+
+  <div id="modal" class="modal" onclick="if(event.target===this)closeHowTo()">
+    <div class="modal-box">
+      <button class="modal-x" onclick="closeHowTo()">✕</button>
+      <h2 id="mTitle" style="color:#f4efe9"></h2>
+      <div class="modal-grid">
+        <div id="mReel"></div>
+        <div>
+          <div class="stage">
+            <div class="counter" id="mCounter"></div>
+            <div class="mstep" id="mStep"></div>
+            <div class="bar"><div class="fill" id="mFill"></div></div>
+            <div class="controls">
+              <button onclick="howToStep(-1)">‹ Prev</button>
+              <button class="primary" id="mPlay" onclick="howToToggle()">▶ Play</button>
+              <button onclick="howToStep(1)">Next ›</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </main>
 <script>
 const DATA = __DATA__;
@@ -455,7 +495,7 @@ function doPlan(shuffle){
       <div class="day">${DAYS[i] || 'Day '+(i+1)}</div>
       <div><strong>${r.title}</strong></div>
       <div class="meta">${r.cuisine} · ${r.time} min · $${r.cost} ($${r.cps.toFixed(2)}/serving) · serves ${r.servings}</div>
-      ${r.video ? `<div class="meta">📹 <a href="recipes/videos/${r.slug}.html">how-to player</a> · <a href="${r.video}" target="_blank">original reel</a></div>` : ''}
+      <div class="meta">📹 <a href="#" onclick="openHowTo('${r.slug}');return false">how-to</a>${r.video ? ` · <a href="${r.video}" target="_blank">original reel</a>` : ''}</div>
     </div>`).join('');
 }
 
@@ -511,9 +551,52 @@ function renderBrowse(){
   document.getElementById('browseList').innerHTML = `<div class="grid">` + rs.map(r => `
     <div class="card recipe-row">
       <div><strong>${r.title}</strong><div class="muted">${r.cuisine} · ${r.time} min · $${r.cps.toFixed(2)}/serving</div></div>
-      <div style="text-align:right"><a href="recipes/videos/${r.slug}.html">📹 how-to</a></div>
+      <div style="text-align:right"><a href="#" onclick="openHowTo('${r.slug}');return false">📹 how-to</a></div>
     </div>`).join('') + `</div>`;
 }
+
+// --- how-to modal ---
+let htSteps = [], htI = 0, htPlaying = false, htTimer = null;
+function bySlug(slug){ return DATA.recipes.find(r => r.slug === slug); }
+function openHowTo(slug){
+  const r = bySlug(slug); if (!r) return;
+  htSteps = r.steps || []; htI = 0; htPlaying = false;
+  document.getElementById('mTitle').textContent = r.title;
+  document.getElementById('mReel').innerHTML = r.embed
+    ? `<iframe src="${r.embed}" scrolling="no" allowtransparency="true"></iframe>`
+    : (r.video ? `<a href="${r.video}" target="_blank">▶ Watch the original reel</a>` : '');
+  document.getElementById('modal').classList.add('open');
+  renderHowTo();
+}
+function closeHowTo(){
+  htStop();
+  document.getElementById('modal').classList.remove('open');
+  document.getElementById('mReel').innerHTML = '';  // stop the reel
+}
+function renderHowTo(){
+  if (!htSteps.length){ document.getElementById('mStep').textContent = 'Steps are in the reel →';
+    document.getElementById('mCounter').textContent = ''; return; }
+  document.getElementById('mStep').textContent = htSteps[htI];
+  document.getElementById('mCounter').textContent = 'STEP ' + (htI+1) + ' / ' + htSteps.length;
+  document.getElementById('mFill').style.width = '0%';
+}
+function htDwell(){ return Math.max(5, Math.min(20, Math.round(htSteps[htI].split(' ').length / 2.5))) * 1000; }
+function htSchedule(){
+  clearTimeout(htTimer);
+  const fill = document.getElementById('mFill'); const dur = htDwell(); const start = Date.now();
+  (function tick(){ if (!htPlaying) return;
+    fill.style.width = Math.min(100, (Date.now()-start)/dur*100) + '%';
+    if (Date.now()-start < dur) requestAnimationFrame(tick); })();
+  htTimer = setTimeout(() => { if (htI < htSteps.length-1){ htI++; renderHowTo(); htSchedule(); } else htStop(); }, dur);
+}
+function htPlay(){ if (!htSteps.length) return; htPlaying = true;
+  document.getElementById('mPlay').textContent = '⏸ Pause'; htSchedule(); }
+function htStop(){ htPlaying = false; clearTimeout(htTimer);
+  const p = document.getElementById('mPlay'); if (p) p.textContent = '▶ Play'; }
+function howToToggle(){ htPlaying ? htStop() : htPlay(); }
+function howToStep(d){ const n = htI + d;
+  if (n >= 0 && n < htSteps.length){ htI = n; renderHowTo(); if (htPlaying) htSchedule(); } }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHowTo(); });
 
 renderStaples(); renderBrowse(); doPlan(false);
 </script>
