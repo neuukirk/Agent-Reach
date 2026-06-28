@@ -32,7 +32,7 @@ Each recipe links its original Instagram reel, and `video <slug>` (or `video all
 | [High-Protein Buffalo Chicken Hot Pockets](buffalo-chicken-hot-pockets.md) | 60 min | $1.60 | high-protein, meal-prep |
 | [High-Protein Buffalo Chicken Potato Bowls](buffalo-chicken-potato-bowls.md) | 40 min | $3.00 | high-protein, meal-prep |
 | [High-Protein McGriddle Slices](high-protein-mcgriddle-slices.md) | 50 min | $1.17 | high-protein, meal-prep |
-| [Hot Honey Buffalo Chicken Dip Melt](hot-honey-buffalo-chicken-dip-melt.md) | 30 min | $6.00 | quick |
+| [Hot Honey Buffalo Chicken Dip Melt](hot-honey-buffalo-chicken-dip-melt.md) | 30 min | $7.00 | quick |
 | [One-Pot Chicken Pot Pie Pasta](chicken-pot-pie-pasta.md) | 35 min | $2.20 | quick, comfort, one-pot |
 | [Philly Cheesesteak Pasta](philly-cheesesteak-pasta.md) | 30 min | $4.00 | quick, high-protein |
 | [Sausage Gravy Biscuit Casserole](sausage-gravy-biscuit-casserole.md) | 50 min | $1.17 | comfort |
@@ -42,20 +42,20 @@ Each recipe links its original Instagram reel, and `video <slug>` (or `video all
 | Recipe | Time | Cost/serving | Tags |
 |--------|------|--------------|------|
 | [High-Protein Chilli Peanut Chicken Noodles](chilli-peanut-chicken-noodles.md) | 30 min | $3.00 | high-protein, meal-prep, quick |
-| [Mongolian Ground Beef Noodles](mongolian-ground-beef-noodles.md) | 20 min | $2.75 | quick |
+| [Mongolian Ground Beef Noodles](mongolian-ground-beef-noodles.md) | 20 min | $2.50 | quick |
 
 ## Asian-fusion
 
 | Recipe | Time | Cost/serving | Tags |
 |--------|------|--------------|------|
 | [Garlic Butter Crispy Soy Honey Chicken Sandwich](garlic-butter-soy-honey-chicken-sandwich.md) | 30 min | $3.00 | high-protein |
-| [Orange Pepper Chicken](orange-pepper-chicken.md) | 45 min | $3.00 |  |
+| [Orange Pepper Chicken](orange-pepper-chicken.md) | 45 min | $2.50 |  |
 
 ## British
 
 | Recipe | Time | Cost/serving | Tags |
 |--------|------|--------------|------|
-| [Ultimate Slow-Cooked Pulled Beef](slow-cooker-pulled-beef.md) | 540 min | $2.67 | meal-prep, slow-cooker |
+| [Ultimate Slow-Cooked Pulled Beef](slow-cooker-pulled-beef.md) | 540 min | $3.00 | meal-prep, slow-cooker |
 
 ## Chinese
 
@@ -88,7 +88,7 @@ Each recipe links its original Instagram reel, and `video <slug>` (or `video all
 
 | Recipe | Time | Cost/serving | Tags |
 |--------|------|--------------|------|
-| [Japanese Barbecue Chuck Roast](japanese-bbq-chuck-roast.md) | 540 min | $3.00 | meal-prep, slow-cooker |
+| [Japanese Barbecue Chuck Roast](japanese-bbq-chuck-roast.md) | 540 min | $3.67 | meal-prep, slow-cooker |
 
 ## Korean
 
@@ -103,7 +103,7 @@ Each recipe links its original Instagram reel, and `video <slug>` (or `video all
 |--------|------|--------------|------|
 | [Creamy Jalapeño Sauce](creamy-jalapeno-sauce.md) | 10 min | $0.62 | sauce, condiment, quick |
 | [Sheet Pan Crunchwraps](sheet-pan-crunchwraps.md) | 45 min | $2.50 | crowd |
-| [Taco Crunch Supreme Wrap](taco-crunch-supreme-wrap.md) | 40 min | $1.80 | crowd |
+| [Taco Crunch Supreme Wrap](taco-crunch-supreme-wrap.md) | 40 min | $2.00 | crowd |
 
 ## Middle Eastern
 

@@ -1,6 +1,7 @@
 # Recipe metadata manifest — powers tools/meal_planner.py and the README index.
 # Add a block here whenever you add a recipe .md file.
-# est_cost_usd = rough total cost to make the whole recipe (US grocery prices).
+# est_cost_usd = estimated total cost to make the whole recipe, calibrated to
+# typical Food Lion pricing (2026). Estimates, not live prices — adjust freely.
 # cost_per_serving is derived automatically by the planner (est_cost_usd / servings).
 
 recipes:
@@ -70,7 +71,7 @@ recipes:
     cuisine: Asian-fusion
     time_min: 45
     servings: 4
-    est_cost_usd: 12
+    est_cost_usd: 10
     protein: chicken
     tags: []
 
@@ -80,7 +81,7 @@ recipes:
     cuisine: Mexican
     time_min: 40
     servings: 10
-    est_cost_usd: 18
+    est_cost_usd: 20
     protein: beef
     tags: [crowd]
 
@@ -160,7 +161,7 @@ recipes:
     cuisine: American
     time_min: 30
     servings: 2
-    est_cost_usd: 12
+    est_cost_usd: 14
     protein: chicken
     tags: [quick]
 
@@ -270,7 +271,7 @@ recipes:
     cuisine: British
     time_min: 540
     servings: 6
-    est_cost_usd: 16
+    est_cost_usd: 18
     protein: beef
     tags: [meal-prep, slow-cooker]
 
@@ -320,7 +321,7 @@ recipes:
     cuisine: Asian
     time_min: 20
     servings: 4
-    est_cost_usd: 11
+    est_cost_usd: 10
     protein: beef
     tags: [quick]
 
@@ -330,6 +331,6 @@ recipes:
     cuisine: Japanese
     time_min: 540
     servings: 6
-    est_cost_usd: 18
+    est_cost_usd: 22
     protein: beef
     tags: [meal-prep, slow-cooker]
