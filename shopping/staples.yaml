@@ -1,0 +1,49 @@
+# Your usual shopping items — the "/shopping" skill runs you through these.
+# Edit freely: add/remove items, and set `default: true` for things you almost
+# always buy (those come pre-checked when you do a shopping run).
+#
+# Grouped by store aisle so the output list stays organized.
+
+staples:
+  Produce:
+    - { item: "Bananas", default: true }
+    - { item: "Yellow onions", default: true }
+    - { item: "Garlic" }
+    - { item: "Baby spinach" }
+    - { item: "Tomatoes" }
+    - { item: "Lemons" }
+    - { item: "Avocados" }
+    - { item: "Bell peppers" }
+
+  Meat & Seafood:
+    - { item: "Chicken breast", default: true }
+    - { item: "Ground beef" }
+    - { item: "Bacon" }
+
+  Dairy & Eggs:
+    - { item: "Eggs (dozen)", default: true }
+    - { item: "Milk", default: true }
+    - { item: "Butter", default: true }
+    - { item: "Greek yogurt" }
+    - { item: "Shredded cheese" }
+    - { item: "Parmesan" }
+
+  Pantry & Canned:
+    - { item: "Coffee", default: true }
+    - { item: "Olive oil" }
+    - { item: "Rice" }
+    - { item: "Pasta" }
+    - { item: "Bread", default: true }
+    - { item: "Peanut butter" }
+    - { item: "Chicken broth" }
+    - { item: "Canned tomatoes" }
+
+  Frozen:
+    - { item: "Frozen vegetables" }
+    - { item: "Frozen berries" }
+
+  Household:
+    - { item: "Paper towels" }
+    - { item: "Dish soap" }
+    - { item: "Trash bags" }
+    - { item: "Laundry detergent" }

@@ -1,6 +1,12 @@
 # 🍳 Recipe Collection
 
-24 recipes saved from Instagram, browsable below. Use the meal planner to build a week + shopping list:
+24 recipes saved from Instagram, browsable below. Run the **Cookbook app** for the full planner + shopping experience:
+
+```bash
+python tools/meal_planner.py cookbook   # generate cookbook.html (open in browser)
+```
+
+Or use the CLI directly:
 
 ```bash
 python tools/meal_planner.py plan --mode budget   # cheapest week

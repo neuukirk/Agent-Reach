@@ -30,8 +30,11 @@ from pathlib import Path
 
 import yaml
 
-RECIPES_DIR = Path(__file__).resolve().parent.parent / "recipes"
+REPO_DIR = Path(__file__).resolve().parent.parent
+RECIPES_DIR = REPO_DIR / "recipes"
 INDEX_FILE = RECIPES_DIR / "index.yaml"
+SHOPPING_DIR = REPO_DIR / "shopping"
+STAPLES_FILE = SHOPPING_DIR / "staples.yaml"
 
 # Aisle routing. First rule whose keyword is a substring of the (lowercased)
 # ingredient line wins, so order matters: compound exceptions come before the
@@ -52,11 +55,15 @@ AISLE_RULES: list[tuple[str, list[str]]] = [
     ("Meat & Seafood", ["chicken", "beef", "pork", "sausage", "bacon",
                          "sirloin", "mince", "ground"]),
     ("Frozen", ["pizza roll", "frozen", "tostada"]),
+    ("Household", ["paper towel", "dish soap", "trash bag", "detergent",
+                   "napkin", "foil", "sponge", "toilet", "shampoo", "cleaner",
+                   "ziploc", "plastic wrap", "tissue", "bin bag"]),
     ("Produce", ["onion", "garlic", "ginger", "tomato", "lettuce", "cucumber",
                  "jalap", "bell pepper", "potato", "carrot", "celery", "spinach",
                  "coriander", "cilantro", "parsley", "scallion", "spring onion",
                  "green onion", "lemon", "lime", "orange", "chive", "basil",
-                 "thyme", "avocado", "mushroom", "rosemary", "fresno", "dill"]),
+                 "thyme", "avocado", "mushroom", "rosemary", "fresno", "dill",
+                 "banana", "berry", "berries", "apple", "lettuce", "kale"]),
     ("Pantry & Canned", ["flour", "cornstarch", "corn starch", "sugar", "rice",
                           "noodle", "pasta", "spaghetti", "tortellini",
                           "macaroni", "breadcrumb", "panko", "cornflake",
@@ -68,11 +75,12 @@ AISLE_RULES: list[tuple[str, list[str]]] = [
                           "sun-dried", "sundried", "sun dried", "wrapper",
                           "biscuit", "tortilla", "ciabatta", "sourdough",
                           "bread", "honey", "syrup", "vinegar", "oil", "wine",
-                          "seasoning", "sauce", "paste", "nutmeg", "pea"]),
+                          "seasoning", "sauce", "paste", "nutmeg", "pea",
+                          "coffee", "tea", "cereal", "oat", "honey", "jam"]),
 ]
 
 AISLE_ORDER = ["Produce", "Meat & Seafood", "Dairy & Eggs", "Pantry & Canned",
-               "Frozen", "Other"]
+               "Frozen", "Household", "Other"]
 
 IG_URL_RE = re.compile(r"https?://(?:www\.)?instagram\.com/\S+")
 
@@ -277,6 +285,243 @@ def _js(s: str) -> str:
     return json.dumps(s)
 
 
+def generate_cookbook_html(recipes: list[dict]) -> str:
+    """Build the single-page Cookbook app: planner + shopping assistant +
+    recipe browser, all driven client-side from embedded recipe data."""
+    import json
+    data = {
+        "aisleOrder": AISLE_ORDER,
+        "staples": load_staples(),
+        "recipes": [],
+    }
+    for r in recipes:
+        data["recipes"].append({
+            "slug": r["slug"], "title": r["title"], "cuisine": r["cuisine"],
+            "category": r.get("category", "main"), "time": r["time_min"],
+            "servings": r["servings"], "cost": r["est_cost_usd"],
+            "cps": r["cost_per_serving"], "tags": r.get("tags", []),
+            "video": video_link(r["slug"]),
+            "ingredients": [{"t": it, "a": aisle_for(it)}
+                            for it in parse_ingredients(r["slug"])],
+        })
+    return COOKBOOK_TEMPLATE.replace("__DATA__", json.dumps(data))
+
+
+COOKBOOK_TEMPLATE = r"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🍳 Cookbook</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, system-ui, sans-serif;
+         background: #14110f; color: #f4efe9; }
+  header { padding: 18px 24px; background: #1e1a16; border-bottom: 1px solid #2c2722;
+           display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  h1 { margin: 0; font-size: 21px; }
+  .tabs { display: flex; gap: 6px; margin-left: auto; }
+  .tab { padding: 8px 16px; border-radius: 8px; background: #2c2722; cursor: pointer;
+         font-size: 14px; border: 0; color: #cfc6ba; }
+  .tab.active { background: #d98a3d; color: #14110f; font-weight: 700; }
+  main { padding: 24px; max-width: 1100px; margin: 0 auto; }
+  .panel { display: none; } .panel.active { display: block; }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 20px; }
+  select, button { padding: 10px 14px; font-size: 14px; border: 0; border-radius: 9px;
+                   background: #2c2722; color: #f4efe9; cursor: pointer; }
+  button.primary { background: #d98a3d; color: #14110f; font-weight: 700; }
+  button:hover { filter: brightness(1.12); }
+  label.inline { font-size: 14px; color: #cfc6ba; display: flex; align-items: center; gap: 6px; }
+  .card { background: #1e1a16; border: 1px solid #2c2722; border-radius: 12px;
+          padding: 16px 18px; margin-bottom: 12px; }
+  .card .day { color: #d98a3d; font-weight: 700; font-size: 13px; letter-spacing: .05em; }
+  .card .meta { color: #998f82; font-size: 13px; margin-top: 4px; }
+  .card a { color: #e6a85c; text-decoration: none; }
+  .summary { font-size: 15px; color: #cfc6ba; margin: 8px 0 20px; }
+  .aisle { margin-bottom: 18px; }
+  .aisle h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
+              color: #998f82; margin: 0 0 8px; }
+  .chk { display: flex; align-items: center; gap: 9px; padding: 4px 0; font-size: 15px; }
+  .cols { columns: 2; } @media (max-width: 640px) { .cols { columns: 1; } }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+  .recipe-row { display: flex; justify-content: space-between; gap: 10px;
+                padding: 11px 14px; }
+  .muted { color: #998f82; font-size: 13px; }
+  textarea { width: 100%; height: 160px; background: #14110f; color: #cfc6ba;
+             border: 1px solid #2c2722; border-radius: 9px; padding: 12px; font: inherit; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🍳 Cookbook</h1>
+  <div class="tabs">
+    <button class="tab active" data-tab="plan">📅 Planner</button>
+    <button class="tab" data-tab="shop">🛒 Shopping</button>
+    <button class="tab" data-tab="browse">📖 Recipes</button>
+  </div>
+</header>
+<main>
+  <section class="panel active" id="plan">
+    <div class="controls">
+      <label class="inline">Mode
+        <select id="mode">
+          <option value="budget">Budget (cheapest)</option>
+          <option value="variety">Variety (mixed cuisines)</option>
+          <option value="quick">Quick (fastest)</option>
+        </select>
+      </label>
+      <label class="inline">Dinners
+        <select id="days">
+          <option>3</option><option selected>5</option><option>7</option>
+        </select>
+      </label>
+      <button class="primary" onclick="doPlan(false)">Generate week</button>
+      <button onclick="doPlan(true)">🔀 Shuffle</button>
+    </div>
+    <div class="summary" id="planSummary"></div>
+    <div id="planList"></div>
+  </section>
+
+  <section class="panel" id="shop">
+    <div class="controls">
+      <label class="inline"><input type="checkbox" id="incPlan" checked> Include this week's plan ingredients</label>
+      <button class="primary" onclick="buildList()">Build shopping list</button>
+      <button onclick="checkDefaults()">Reset to usuals</button>
+    </div>
+    <p class="muted">Check off the usuals you need this week, then build your list.</p>
+    <div id="staples"></div>
+    <h3 style="margin-top:28px">Your list</h3>
+    <div id="shopOut"></div>
+  </section>
+
+  <section class="panel" id="browse">
+    <div class="controls"><label class="inline">Sort
+      <select id="sort" onchange="renderBrowse()">
+        <option value="cps">Cost</option><option value="time">Time</option>
+        <option value="cuisine">Cuisine</option>
+      </select></label>
+    </div>
+    <div id="browseList"></div>
+  </section>
+</main>
+<script>
+const DATA = __DATA__;
+let currentPlan = [];
+
+// --- tabs ---
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById(t.dataset.tab).classList.add('active');
+});
+
+// --- planner ---
+function weight(r, mode){ return mode === 'quick' ? 1/Math.max(5, r.time) : 1/Math.max(0.25, r.cps); }
+function planWeek(mode, days, shuffle){
+  let pool = DATA.recipes.filter(r => r.category === 'main');
+  if (mode === 'budget') pool.sort((a,b) => a.cps-b.cps || a.time-b.time);
+  else if (mode === 'quick') pool.sort((a,b) => a.time-b.time || a.cps-b.cps);
+  else pool.sort((a,b) => a.cps-b.cps);
+  const cap0 = mode === 'variety' ? 1 : 2;
+  let chosen = [], slugs = new Set(), cc = {};
+  function pick(cap){
+    let elig = pool.filter(r => !slugs.has(r.slug) && (cc[r.cuisine]||0) < cap);
+    if (!elig.length) return false;
+    let r;
+    if (shuffle){
+      let tot = elig.reduce((s,x) => s+weight(x,mode), 0), rnd = Math.random()*tot, up = 0;
+      r = elig[elig.length-1];
+      for (const e of elig){ up += weight(e,mode); if (up >= rnd){ r = e; break; } }
+    } else r = elig[0];
+    chosen.push(r); slugs.add(r.slug); cc[r.cuisine] = (cc[r.cuisine]||0)+1; return true;
+  }
+  let cap = cap0;
+  while (chosen.length < days){ if (!pick(cap)){ cap++; if (cap > days+cap0) break; } }
+  return chosen.slice(0, days);
+}
+const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+function doPlan(shuffle){
+  const mode = document.getElementById('mode').value;
+  const days = +document.getElementById('days').value;
+  currentPlan = planWeek(mode, days, shuffle);
+  const total = currentPlan.reduce((s,r) => s+r.cost, 0);
+  document.getElementById('planSummary').textContent =
+    `${currentPlan.length} dinners · est. $${total.toFixed(0)} groceries · mode: ${mode}`;
+  document.getElementById('planList').innerHTML = currentPlan.map((r,i) => `
+    <div class="card">
+      <div class="day">${DAYS[i] || 'Day '+(i+1)}</div>
+      <div><strong>${r.title}</strong></div>
+      <div class="meta">${r.cuisine} · ${r.time} min · $${r.cost} ($${r.cps.toFixed(2)}/serving) · serves ${r.servings}</div>
+      ${r.video ? `<div class="meta">📹 <a href="recipes/videos/${r.slug}.html">how-to player</a> · <a href="${r.video}" target="_blank">original reel</a></div>` : ''}
+    </div>`).join('');
+}
+
+// --- shopping ---
+function renderStaples(){
+  const wrap = document.getElementById('staples');
+  let html = '';
+  for (const [aisle, items] of Object.entries(DATA.staples)){
+    html += `<div class="aisle"><h3>${aisle}</h3><div class="cols">`;
+    items.forEach((it, idx) => {
+      const id = `st_${aisle.replace(/\W/g,'')}_${idx}`;
+      html += `<label class="chk"><input type="checkbox" id="${id}" data-aisle="${aisle}" data-item="${it.item.replace(/"/g,'&quot;')}" ${it.default ? 'checked' : ''}> ${it.item}</label>`;
+    });
+    html += `</div></div>`;
+  }
+  wrap.innerHTML = html;
+}
+function checkDefaults(){ renderStaples(); document.getElementById('shopOut').innerHTML = ''; }
+function buildList(){
+  const buckets = {}; const seen = new Set();
+  const add = (text, aisle) => {
+    const key = text.toLowerCase().replace(/\s+/g,' ').trim();
+    if (!key || seen.has(key)) return; seen.add(key);
+    (buckets[aisle] = buckets[aisle] || []).push(text);
+  };
+  document.querySelectorAll('#staples input:checked').forEach(c =>
+    add(c.dataset.item, c.dataset.aisle));
+  if (document.getElementById('incPlan').checked)
+    currentPlan.forEach(r => r.ingredients.forEach(ing => add(ing.t, ing.a)));
+  let html = '', plain = '';
+  DATA.aisleOrder.forEach(aisle => {
+    if (!buckets[aisle]) return;
+    html += `<div class="aisle"><h3>${aisle}</h3>`;
+    plain += `\n${aisle}\n`;
+    buckets[aisle].forEach(item => {
+      html += `<label class="chk"><input type="checkbox"> ${item}</label>`;
+      plain += `  - ${item}\n`;
+    });
+    html += `</div>`;
+  });
+  if (!html) html = '<p class="muted">Nothing selected yet — check some usuals or generate a plan first.</p>';
+  else html += `<button onclick='navigator.clipboard.writeText(${JSON.stringify(plain)})' style="margin-top:8px">📋 Copy list</button>`;
+  document.getElementById('shopOut').innerHTML = html;
+}
+
+// --- browse ---
+function renderBrowse(){
+  const sort = document.getElementById('sort').value;
+  let rs = [...DATA.recipes];
+  if (sort === 'cps') rs.sort((a,b) => a.cps-b.cps);
+  else if (sort === 'time') rs.sort((a,b) => a.time-b.time);
+  else rs.sort((a,b) => a.cuisine.localeCompare(b.cuisine) || a.title.localeCompare(b.title));
+  document.getElementById('browseList').innerHTML = `<div class="grid">` + rs.map(r => `
+    <div class="card recipe-row">
+      <div><strong>${r.title}</strong><div class="muted">${r.cuisine} · ${r.time} min · $${r.cps.toFixed(2)}/serving</div></div>
+      <div style="text-align:right"><a href="recipes/videos/${r.slug}.html">📹 how-to</a></div>
+    </div>`).join('') + `</div>`;
+}
+
+renderStaples(); renderBrowse(); doPlan(false);
+</script>
+</body>
+</html>
+"""
+
+
 # Keywords that must match as whole words, so "minced" doesn't read as "mince"
 # (which would misroute "garlic cloves, minced" into Meat & Seafood).
 WHOLE_WORD = {"mince", "ground", "egg", "cream"}
@@ -284,7 +529,8 @@ WHOLE_WORD = {"mince", "ground", "egg", "cream"}
 
 def _matches(keyword: str, text: str) -> bool:
     if keyword in WHOLE_WORD:
-        return re.search(rf"\b{re.escape(keyword)}\b", text) is not None
+        # Whole word, but allow a plural 's'/'es' (egg -> eggs, mince -> minces).
+        return re.search(rf"\b{re.escape(keyword)}(?:e?s)?\b", text) is not None
     return keyword in text
 
 
@@ -368,17 +614,49 @@ def select_plan(recipes: list[dict], days: int, mode: str, shuffle: bool,
 # Shopping list
 # ---------------------------------------------------------------------------
 
-def build_shopping_list(slugs: list[str]) -> dict[str, list[str]]:
+def build_shopping_list(slugs: list[str],
+                        extra_items: list[str] | None = None) -> dict[str, list[str]]:
     aisles: dict[str, list[str]] = {a: [] for a in AISLE_ORDER}
     seen: set[str] = set()
+
+    def add(item: str) -> None:
+        key = re.sub(r"\s+", " ", item.lower()).strip()
+        if not key or key in seen:
+            return
+        seen.add(key)
+        aisles.setdefault(aisle_for(item), []).append(item)
+
     for slug in slugs:
         for item in parse_ingredients(slug):
-            key = re.sub(r"\s+", " ", item.lower()).strip()
-            if key in seen:
-                continue
-            seen.add(key)
-            aisles.setdefault(aisle_for(item), []).append(item)
+            add(item)
+    for item in extra_items or []:
+        add(item)
     return {a: items for a, items in aisles.items() if items}
+
+
+def load_staples() -> dict[str, list[dict]]:
+    if not STAPLES_FILE.exists():
+        return {}
+    data = yaml.safe_load(STAPLES_FILE.read_text()) or {}
+    return data.get("staples", {})
+
+
+def print_staples(defaults_only: bool = False) -> None:
+    staples = load_staples()
+    if not staples:
+        print(f"No staples file at {STAPLES_FILE}")
+        return
+    print("\n🧺  Your usual items"
+          + (" (defaults)" if defaults_only else "") + "\n")
+    for aisle, items in staples.items():
+        rows = [it for it in items if it.get("default")] if defaults_only else items
+        if not rows:
+            continue
+        print(f"  {aisle}")
+        for it in rows:
+            mark = "★" if it.get("default") else " "
+            print(f"    {mark} {it['item']}")
+        print()
 
 
 # ---------------------------------------------------------------------------
@@ -418,6 +696,65 @@ def print_shopping_list(slugs: list[str]) -> None:
             print()
 
 
+def write_shopping_list_md(aisles: dict[str, list[str]], slugs: list[str],
+                           title: str) -> Path:
+    from datetime import date
+    SHOPPING_DIR.mkdir(exist_ok=True)
+    lines = [f"# 🛒 Shopping List — {title}", "", f"_{date.today().isoformat()}_", ""]
+    for aisle in AISLE_ORDER:
+        if aisle in aisles:
+            lines.append(f"## {aisle}")
+            for item in aisles[aisle]:
+                lines.append(f"- [ ] {item}")
+            lines.append("")
+    if slugs:
+        index = by_slug(load_recipes())
+        lines.append("## Meals included")
+        for slug in slugs:
+            r = index.get(slug)
+            title_txt = r["title"] if r else slug
+            vid = video_link(slug)
+            vid_txt = f" — [📹 how-to]({vid})" if vid else ""
+            lines.append(f"- [{title_txt}](../recipes/{slug}.md){vid_txt}")
+        lines.append("")
+    out = SHOPPING_DIR / f"list-{date.today().isoformat()}.md"
+    out.write_text("\n".join(lines))
+    return out
+
+
+def cmd_shop(recipes: list[dict], args: argparse.Namespace) -> int:
+    slugs = list(args.recipes)
+    if args.plan_days:
+        plan = select_plan(recipes, args.plan_days, args.plan_mode,
+                           args.shuffle, args.seed, [], set())
+        for r in plan:
+            if r["slug"] not in slugs:
+                slugs.append(r["slug"])
+    valid = {r["slug"] for r in recipes}
+    unknown = [s for s in slugs if s not in valid]
+    if unknown:
+        print(f"Unknown recipe(s): {', '.join(unknown)}")
+        return 1
+    aisles = build_shopping_list(slugs, args.add)
+    if not aisles:
+        print("Nothing to shop for — add staples (--add) or recipes (--recipes).")
+        return 1
+    out = write_shopping_list_md(aisles, slugs, args.title)
+    print_shopping_list_aisles(aisles)
+    print(f"📝 Saved to {out}")
+    return 0
+
+
+def print_shopping_list_aisles(aisles: dict[str, list[str]]) -> None:
+    print("🛒  Shopping List\n")
+    for aisle in AISLE_ORDER:
+        if aisle in aisles:
+            print(f"  {aisle}")
+            for item in aisles[aisle]:
+                print(f"    ☐ {item}")
+            print()
+
+
 def print_list(recipes: list[dict], sort: str) -> None:
     if sort == "cost":
         recipes = sorted(recipes, key=lambda r: r["cost_per_serving"])
@@ -436,7 +773,11 @@ def print_list(recipes: list[dict], sort: str) -> None:
 def generate_readme(recipes: list[dict]) -> str:
     lines = ["# 🍳 Recipe Collection", "",
              f"{len(recipes)} recipes saved from Instagram, browsable below. "
-             "Use the meal planner to build a week + shopping list:", "",
+             "Run the **Cookbook app** for the full planner + shopping experience:", "",
+             "```bash",
+             "python tools/meal_planner.py cookbook   # generate cookbook.html (open in browser)",
+             "```", "",
+             "Or use the CLI directly:", "",
              "```bash",
              "python tools/meal_planner.py plan --mode budget   # cheapest week",
              "python tools/meal_planner.py plan --mode variety  # mix of cuisines",
@@ -493,6 +834,20 @@ def main(argv: list[str] | None = None) -> int:
     vp = sub.add_parser("video", help="generate a how-to video player (HTML) for recipe(s)")
     vp.add_argument("slugs", nargs="+", help="recipe slug(s), or 'all'")
 
+    sub.add_parser("cookbook", help="generate the Cookbook app (cookbook.html)")
+
+    stp = sub.add_parser("staples", help="show your usual shopping items")
+    stp.add_argument("--defaults", action="store_true", help="only the pre-checked items")
+
+    shp = sub.add_parser("shop", help="build a combined shopping list (staples + recipes)")
+    shp.add_argument("--add", nargs="*", default=[], help="staple/free-text items to include")
+    shp.add_argument("--recipes", nargs="*", default=[], help="recipe slug(s) to include")
+    shp.add_argument("--plan-days", type=int, default=0, help="also fold in an auto meal plan")
+    shp.add_argument("--plan-mode", choices=["budget", "variety", "quick"], default="budget")
+    shp.add_argument("--shuffle", action="store_true")
+    shp.add_argument("--seed", type=int, default=None)
+    shp.add_argument("--title", default="This Week")
+
     args = parser.parse_args(argv)
     recipes = load_recipes()
 
@@ -530,6 +885,15 @@ def main(argv: list[str] | None = None) -> int:
             out.write_text(generate_video_html(slug))
             print(f"📹 {out}")
         print(f"\nOpen any file in a browser to play the how-to.")
+    elif args.command == "cookbook":
+        out = REPO_DIR / "cookbook.html"
+        out.write_text(generate_cookbook_html(recipes))
+        print(f"🍳 Cookbook app generated: {out}\n   Open it in a browser to "
+              f"plan, shop, and browse.")
+    elif args.command == "staples":
+        print_staples(defaults_only=args.defaults)
+    elif args.command == "shop":
+        return cmd_shop(recipes, args)
     return 0
 
 
