@@ -285,15 +285,80 @@ def _js(s: str) -> str:
     return json.dumps(s)
 
 
+_WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+
+def _plan_cards_html(plan: list[dict]) -> str:
+    out = []
+    for i, r in enumerate(plan):
+        day = _WEEK_DAYS[i] if i < len(_WEEK_DAYS) else f"Day {i + 1}"
+        vid = video_link(r["slug"])
+        reel = f' · <a href="{vid}" target="_blank">original reel</a>' if vid else ""
+        out.append(
+            f'<div class="card"><div class="day">{day}</div>'
+            f'<div><strong>{html.escape(r["title"])}</strong></div>'
+            f'<div class="meta">{html.escape(r["cuisine"])} · {r["time_min"]} min · '
+            f'${r["est_cost_usd"]:.0f} (${r["cost_per_serving"]:.2f}/serving) · '
+            f'serves {r["servings"]}</div>'
+            f'<div class="meta">📹 <a href="#" data-howto="{r["slug"]}">how-to</a>'
+            f'{reel}</div></div>')
+    return "".join(out)
+
+
+def _plan_summary_html(plan: list[dict], mode: str = "budget") -> str:
+    total = sum(r["est_cost_usd"] for r in plan)
+    return f"{len(plan)} dinners · est. ${total:.0f} groceries · mode: {mode}"
+
+
+def _browse_html(recipes: list[dict]) -> str:
+    cards = []
+    for r in sorted(recipes, key=lambda r: r["cost_per_serving"]):
+        cards.append(
+            f'<div class="card recipe-row"><div><strong>'
+            f'{html.escape(r["title"])}</strong><div class="muted">'
+            f'{html.escape(r["cuisine"])} · {r["time_min"]} min · '
+            f'${r["cost_per_serving"]:.2f}/serving</div></div>'
+            f'<div style="text-align:right"><a href="#" data-howto="{r["slug"]}">'
+            f'📹 how-to</a></div></div>')
+    return '<div class="grid">' + "".join(cards) + "</div>"
+
+
+def _staples_html(staples: dict) -> str:
+    out = []
+    for aisle, items in staples.items():
+        out.append(f'<div class="aisle"><h3>{html.escape(aisle)}</h3><div class="cols">')
+        akey = re.sub(r"\W", "", aisle)
+        for idx, it in enumerate(items):
+            item = html.escape(it["item"])
+            chk = "checked" if it.get("default") else ""
+            out.append(
+                f'<label class="chk"><input type="checkbox" id="st_{akey}_{idx}" '
+                f'data-aisle="{html.escape(aisle)}" data-item="{item}" {chk}> '
+                f'{item}</label>')
+        out.append("</div></div>")
+    return "".join(out)
+
+
+def _shop_html(aisles: dict[str, list[str]]) -> str:
+    out = []
+    for aisle in AISLE_ORDER:
+        if aisle in aisles:
+            out.append(f'<div class="aisle"><h3>{html.escape(aisle)}</h3>')
+            for item in aisles[aisle]:
+                out.append(f'<label class="chk"><input type="checkbox"> '
+                           f'{html.escape(item)}</label>')
+            out.append("</div>")
+    return "".join(out) or '<p class="muted">Generate a plan to build a list.</p>'
+
+
 def generate_cookbook_html(recipes: list[dict]) -> str:
     """Build the single-page Cookbook app: planner + shopping assistant +
-    recipe browser, all driven client-side from embedded recipe data."""
+    recipe browser. Interactive via embedded JS, but the default week, shopping
+    list, and recipe list are also pre-rendered as static HTML so the page is
+    useful even in viewers that don't run JavaScript (e.g. mobile previews)."""
     import json
-    data = {
-        "aisleOrder": AISLE_ORDER,
-        "staples": load_staples(),
-        "recipes": [],
-    }
+    staples = load_staples()
+    data = {"aisleOrder": AISLE_ORDER, "staples": staples, "recipes": []}
     for r in recipes:
         data["recipes"].append({
             "slug": r["slug"], "title": r["title"], "cuisine": r["cuisine"],
@@ -306,7 +371,20 @@ def generate_cookbook_html(recipes: list[dict]) -> str:
             "ingredients": [{"t": it, "a": aisle_for(it)}
                             for it in parse_ingredients(r["slug"])],
         })
-    return COOKBOOK_TEMPLATE.replace("__DATA__", json.dumps(data))
+    # Pre-rendered defaults for the no-JavaScript fallback.
+    default_plan = select_plan(recipes, 5, "budget", False, None, [], set())
+    plan_slugs = [r["slug"] for r in default_plan]
+    default_staples = [it["item"] for items in staples.values()
+                       for it in items if it.get("default")]
+    default_shop = build_shopping_list(plan_slugs, default_staples)
+
+    out = COOKBOOK_TEMPLATE.replace("__DATA__", json.dumps(data))
+    out = out.replace("__PLAN_SUMMARY__", _plan_summary_html(default_plan))
+    out = out.replace("__PLAN_LIST__", _plan_cards_html(default_plan))
+    out = out.replace("__STAPLES__", _staples_html(staples))
+    out = out.replace("__SHOP_OUT__", _shop_html(default_shop))
+    out = out.replace("__BROWSE_LIST__", _browse_html(recipes))
+    return out
 
 
 COOKBOOK_TEMPLATE = r"""<!DOCTYPE html>
@@ -323,13 +401,18 @@ COOKBOOK_TEMPLATE = r"""<!DOCTYPE html>
   header { padding: 18px 24px; background: #1e1a16; border-bottom: 1px solid #2c2722;
            display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
   h1 { margin: 0; font-size: 21px; }
-  .tabs { display: flex; gap: 6px; margin-left: auto; }
+  /* Progressive enhancement: without JS, all panels show and the interactive
+     controls/tabs are hidden. JS adds .js to <body> to enable the app UI. */
+  .tabs { display: none; gap: 6px; margin-left: auto; }
+  body.js .tabs { display: flex; }
   .tab { padding: 8px 16px; border-radius: 8px; background: #2c2722; cursor: pointer;
          font-size: 14px; border: 0; color: #cfc6ba; }
   .tab.active { background: #d98a3d; color: #14110f; font-weight: 700; }
   main { padding: 24px; max-width: 1100px; margin: 0 auto; }
-  .panel { display: none; } .panel.active { display: block; }
-  .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 20px; }
+  .panel { display: block; }
+  body.js .panel { display: none; } body.js .panel.active { display: block; }
+  .controls { display: none; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 20px; }
+  body.js .controls { display: flex; }
   select, button { padding: 10px 14px; font-size: 14px; border: 0; border-radius: 9px;
                    background: #2c2722; color: #f4efe9; cursor: pointer; }
   button.primary { background: #d98a3d; color: #14110f; font-weight: 700; }
@@ -369,9 +452,19 @@ COOKBOOK_TEMPLATE = r"""<!DOCTYPE html>
   .mstep { font-size: 22px; line-height: 1.45; margin: 14px 0 auto; }
   .bar { height: 4px; background: #2c2722; border-radius: 2px; margin-top: 18px; overflow: hidden; }
   .fill { height: 100%; width: 0; background: #d98a3d; }
+  .banner { background: #d98a3d; color: #14110f; padding: 12px 20px; font-weight: 600;
+            font-size: 14px; line-height: 1.5; }
 </style>
 </head>
 <body>
+<noscript>
+  <style>.panel { display: block !important; } .tabs { display: none; }
+    .controls button, .controls select { display: none; }</style>
+  <div class="banner">📱 This preview doesn't run JavaScript, so the buttons are
+    inactive — but your default week, shopping list, and all recipes are shown
+    below. For the interactive planner (shuffle, modes, build-list), open this
+    file in a browser like Safari or Chrome.</div>
+</noscript>
 <header>
   <h1>🍳 Cookbook</h1>
   <div class="tabs">
@@ -398,8 +491,8 @@ COOKBOOK_TEMPLATE = r"""<!DOCTYPE html>
       <button class="primary" id="genBtn">Generate week</button>
       <button id="shufBtn">🔀 Shuffle</button>
     </div>
-    <div class="summary" id="planSummary"></div>
-    <div id="planList"></div>
+    <div class="summary" id="planSummary">__PLAN_SUMMARY__</div>
+    <div id="planList">__PLAN_LIST__</div>
   </section>
 
   <section class="panel" id="shop">
@@ -409,9 +502,9 @@ COOKBOOK_TEMPLATE = r"""<!DOCTYPE html>
       <button id="resetBtn">Reset to usuals</button>
     </div>
     <p class="muted">Check off the usuals you need this week, then build your list.</p>
-    <div id="staples"></div>
+    <div id="staples">__STAPLES__</div>
     <h3 style="margin-top:28px">Your list</h3>
-    <div id="shopOut"></div>
+    <div id="shopOut">__SHOP_OUT__</div>
   </section>
 
   <section class="panel" id="browse">
@@ -421,7 +514,7 @@ COOKBOOK_TEMPLATE = r"""<!DOCTYPE html>
         <option value="cuisine">Cuisine</option>
       </select></label>
     </div>
-    <div id="browseList"></div>
+    <div id="browseList">__BROWSE_LIST__</div>
   </section>
 
   <div id="modal" class="modal">
@@ -449,6 +542,7 @@ COOKBOOK_TEMPLATE = r"""<!DOCTYPE html>
 <script>
 const DATA = __DATA__;
 let currentPlan = [];
+document.body.classList.add('js');  // enable interactive UI (tabs/controls)
 
 // --- tabs ---
 document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
