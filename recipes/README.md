@@ -1,6 +1,6 @@
 # 🍳 Recipe Collection
 
-31 recipes saved from Instagram, browsable below. Run the **Cookbook app** for the full planner + shopping experience:
+33 recipes saved from Instagram, browsable below. Run the **Cookbook app** for the full planner + shopping experience:
 
 ```bash
 python tools/meal_planner.py cookbook   # generate cookbook.html (open in browser)
@@ -42,6 +42,7 @@ Each recipe links its original Instagram reel, and `video <slug>` (or `video all
 | Recipe | Time | Cost/serving | Tags |
 |--------|------|--------------|------|
 | [High-Protein Chilli Peanut Chicken Noodles](chilli-peanut-chicken-noodles.md) | 30 min | $3.00 | high-protein, meal-prep, quick |
+| [Mongolian Ground Beef Noodles](mongolian-ground-beef-noodles.md) | 20 min | $2.75 | quick |
 
 ## Asian-fusion
 
@@ -82,6 +83,12 @@ Each recipe links its original Instagram reel, and `video <slug>` (or `video all
 | [Creamy Sun-Dried Tomato Pasta](creamy-sun-dried-tomato-pasta.md) | 20 min | $1.67 | quick, vegetarian |
 | [Lemon Garlic Chicken Alfredo](lemon-garlic-chicken-alfredo.md) | 40 min | $3.25 | comfort |
 | [Marry Me Tortellini](marry-me-tortellini.md) | 20 min | $2.75 | quick, comfort, vegetarian |
+
+## Japanese
+
+| Recipe | Time | Cost/serving | Tags |
+|--------|------|--------------|------|
+| [Japanese Barbecue Chuck Roast](japanese-bbq-chuck-roast.md) | 540 min | $3.00 | meal-prep, slow-cooker |
 
 ## Korean
 

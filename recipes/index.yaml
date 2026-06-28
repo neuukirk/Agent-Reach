@@ -313,3 +313,23 @@ recipes:
     est_cost_usd: 8
     protein: vegetarian
     tags: [comfort, vegetarian]
+
+  - file: mongolian-ground-beef-noodles.md
+    title: Mongolian Ground Beef Noodles
+    category: main
+    cuisine: Asian
+    time_min: 20
+    servings: 4
+    est_cost_usd: 11
+    protein: beef
+    tags: [quick]
+
+  - file: japanese-bbq-chuck-roast.md
+    title: Japanese Barbecue Chuck Roast
+    category: main
+    cuisine: Japanese
+    time_min: 540
+    servings: 6
+    est_cost_usd: 18
+    protein: beef
+    tags: [meal-prep, slow-cooker]
